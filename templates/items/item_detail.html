@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ item.title }} | Lost & Found{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 30px; padding-bottom: 50px;">
+
+  <!-- Breadcrumb -->
+  <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--gray-500);">
+    <a href="{% url 'items:item_list' %}">← Back to Listings</a> /
+    <span style="color: var(--gray-800); font-weight: 600;">{{ item.title }}</span>
+  </div>
+
+  <div class="grid grid-cols-2" style="align-items: start; gap: 32px;">
+
+    <!-- Left Column: Media & Primary Details -->
+    <div>
+      <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 20px;">
+        <div style="height: 380px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; position: relative;">
+          {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+          {% else %}
+            <div style="font-size: 5rem; color: var(--gray-400);">
+              {% if item.category %}{{ item.category.icon }}{% else %}📦{% endif %}
+            </div>
+          {% endif %}
+
+          <div style="position: absolute; top: 16px; left: 16px;">
+            {% if item.item_type == 'LOST' %}
+              <span class="badge badge-lost" style="font-size: 0.9rem; padding: 6px 14px;">Lost Item</span>
+            {% else %}
+              <span class="badge badge-found" style="font-size: 0.9rem; padding: 6px 14px;">Found Item</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div style="padding: 24px;">
+          <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; color: var(--dark);">
+            {{ item.title }}
+          </h1>
+          
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.95rem; color: var(--gray-600);">
+            <span>📍 {{ item.city }}, {{ item.country }}</span>
+            <span>📅 {{ item.date_lost_or_found|date:"F d, Y" }}</span>
+            <span>🏷️ {{ item.category.name|default:"General" }}</span>
+          </div>
+
+          <div style="border-top: 1px solid var(--gray-200); padding-top: 18px; margin-top: 10px;">
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px;">Public Description</h3>
+            <p style="color: var(--gray-700); line-height: 1.6; white-space: pre-line;">{{ item.public_description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Verification, Anti-Scam Shield & Action -->
+    <div>
+      
+      <!-- Key Item Attributes -->
+      <div class="card">
+        <h3 class="card-title">Item Overview</h3>
+        <table style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid var(--gray-100);">
+            <td style="padding: 10px 0; color: var(--gray-500); width: 40%;">Status</td>
+            <td style="padding: 10px 0; font-weight: 600;">
+              <span class="badge {% if item.status == 'OPEN' %}badge-open{% elif item.status == 'RESOLVED' %}badge-resolved{% else %}badge-pending{% endif %}">
+                {{ item.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--gray-100);">
+            <td style="padding: 10px 0; color: var(--gray-500);">Location Details</td>
+            <td style="padding: 10px 0; font-weight: 600;">{{ item.location_details }}</td>
+          </tr>
+          {% if item.brand %}
+            <tr style="border-bottom: 1px solid var(--gray-100);">
+              <td style="padding: 10px 0; color: var(--gray-500);">Brand</td>
+              <td style="padding: 10px 0; font-weight: 600;">{{ item.brand }}</td>
+            </tr>
+          {% endif %}
+          {% if item.primary_color %}
+            <tr style="border-bottom: 1px solid var(--gray-100);">
+              <td style="padding: 10px 0; color: var(--gray-500);">Primary Color</td>
+              <td style="padding: 10px 0; font-weight: 600;">{{ item.primary_color }}</td>
+            </tr>
+          {% endif %}
+          <tr>
+            <td style="padding: 10px 0; color: var(--gray-500);">Reported By</td>
+            <td style="padding: 10px 0; font-weight: 600;">
+              {{ item.reporter.username }}
+              {% if item.reporter.is_email_verified %}
+                <span class="badge badge-verified" style="font-size: 0.7rem;">Verified User</span>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- ANTI-SCAM PROTECTION LOGIC -->
+      {% if is_reporter %}
+        <!-- Finder / Reporter sees their own private hidden notes -->
+        <div class="card" style="border: 2px solid #3b82f6; background: #eff6ff;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 1.3rem;">🔒</span>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af;">Your Private Anti-Scam Details (Reporter Only)</h3>
+          </div>
+          <p style="font-size: 0.85rem; color: #1e3a8a; margin-bottom: 12px;">
+            These details are <strong>STRICTLY HIDDEN</strong> from the public. Claimants will have to answer blind questions to match these secrets:
+          </p>
+          <div style="background: var(--white); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid #bfdbfe; font-size: 0.9rem; color: var(--gray-800); white-space: pre-line;">
+            {{ item.hidden_details|default:"No private details specified." }}
+          </div>
+          {% if item.challenge_question %}
+            <div style="margin-top: 12px; font-size: 0.85rem; color: var(--gray-700);">
+              <strong>Blind Challenge Question:</strong> {{ item.challenge_question }}
+            </div>
+          {% endif %}
+        </div>
+
+      {% elif item.item_type == 'FOUND' %}
+        <!-- Potential Claimant View -->
+        <div class="card" style="border: 2px solid #10b981; background: #f0fdf4;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 1.3rem;">🛡️</span>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: #065f46;">Is This Item Yours?</h3>
+          </div>
+          <p style="font-size: 0.9rem; color: #064e3b; margin-bottom: 16px;">
+            To protect genuine owners against fraud and theft, the finder has stored private identifying details in our AI-verified escrow.
+          </p>
+
+          {% if existing_claim %}
+            <div style="background: var(--white); border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
+              <div style="font-weight: 700; color: #065f46; font-size: 0.95rem;">
+                You submitted a claim for this item!
+              </div>
+              <p style="font-size: 0.85rem; color: var(--gray-600); margin-top: 4px;">
+                Status: <span class="badge badge-pending">{{ existing_claim.get_status_display }}</span>
+              </p>
+              <div style="margin-top: 10px;">
+                <a href="{% url 'claims:claim_detail' existing_claim.id %}" class="btn btn-secondary btn-sm">
+                  View Your Claim & AI Score →
+                </a>
+              </div>
+            </div>
+          {% elif user.is_authenticated %}
+            <div style="background: var(--white); border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+              <div style="font-weight: 600; font-size: 0.9rem; color: var(--gray-800); margin-bottom: 4px;">
+                Challenge Question from Finder:
+              </div>
+              <p style="font-size: 0.85rem; color: var(--gray-600); font-style: italic;">
+                "{{ item.challenge_question|default:'Please describe the unique hidden features or contents inside the item.' }}"
+              </p>
+            </div>
+
+            <a href="{% url 'claims:submit_claim' item.id %}" class="btn btn-success btn-block btn-lg">
+              🛡️ Submit Ownership Claim (Blind Verification)
+            </a>
+          {% else %}
+            <div style="margin-top: 14px;">
+              <p style="font-size: 0.85rem; color: #064e3b; margin-bottom: 10px;">
+                Please log in and verify your email to submit an ownership claim.
+              </p>
+              <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-primary btn-block">
+                Log In to Claim This Item
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

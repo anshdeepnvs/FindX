@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Browse Lost & Found Items{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 30px; padding-bottom: 50px;">
+
+  <!-- Page Header -->
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 2rem; font-weight: 800; color: var(--dark);">Browse Community Listings</h1>
+    <p style="color: var(--gray-600);">Search for your lost property or browse items found by responsible citizens.</p>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="card" style="padding: 20px; margin-bottom: 30px;">
+    <form method="get" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+      
+      <div style="flex: 2; min-width: 200px;">
+        <label class="form-label" style="margin-bottom: 4px;">Search Keyword</label>
+        <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Wallet, iPhone, Backpack, Keys...">
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="margin-bottom: 4px;">Listing Type</label>
+        <select name="type" class="form-control">
+          <option value="">All Types</option>
+          <option value="FOUND" {% if selected_type == 'FOUND' %}selected{% endif %}>Found Items</option>
+          <option value="LOST" {% if selected_type == 'LOST' %}selected{% endif %}>Lost Items</option>
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 150px;">
+        <label class="form-label" style="margin-bottom: 4px;">Category</label>
+        <select name="category" class="form-control">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat.slug }}" {% if selected_category == cat.slug %}selected{% endif %}>
+              {{ cat.icon }} {{ cat.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 130px;">
+        <label class="form-label" style="margin-bottom: 4px;">City</label>
+        <input type="text" name="city" value="{{ selected_city }}" class="form-control" placeholder="City...">
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="btn btn-primary" style="height: 42px;">Filter</button>
+        {% if search_query or selected_type or selected_category or selected_city %}
+          <a href="{% url 'items:item_list' %}" class="btn btn-secondary" style="height: 42px;">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Listings Grid -->
+  {% if items %}
+    <div class="grid grid-cols-3">
+      {% for item in items %}
+        <div class="item-card">
+          <div class="item-thumb">
+            {% if item.image %}
+              <img src="{{ item.image.url }}" alt="{{ item.title }}">
+            {% else %}
+              <div class="item-thumb-placeholder">
+                {% if item.category %}{{ item.category.icon }}{% else %}📦{% endif %}
+              </div>
+            {% endif %}
+            <div class="item-badge-type">
+              {% if item.item_type == 'LOST' %}
+                <span class="badge badge-lost">Lost</span>
+              {% else %}
+                <span class="badge badge-found">Found</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="item-body">
+            <h3 class="item-title">{{ item.title }}</h3>
+            <div class="item-meta">
+              <span>📍 {{ item.city }}</span>
+              <span>📅 {{ item.date_lost_or_found|date:"M d, Y" }}</span>
+            </div>
+            
+            <p class="item-desc">{{ item.public_description }}</p>
+
+            <div class="item-footer">
+              {% if item.item_type == 'FOUND' %}
+                <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">🛡️ Blind Verified</span>
+                <a href="{% url 'items:item_detail' item.id %}" class="btn btn-primary btn-sm">Claim / View</a>
+              {% else %}
+                <span style="font-size: 0.8rem; color: var(--gray-500);">Reported Lost</span>
+                <a href="{% url 'items:item_detail' item.id %}" class="btn btn-secondary btn-sm">View Details</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card" style="text-align: center; padding: 60px 20px;">
+      <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+      <h3 style="font-size: 1.3rem; margin-bottom: 8px;">No listings matched your criteria</h3>
+      <p style="color: var(--gray-500); margin-bottom: 20px;">Try removing some filters or search for another keyword.</p>
+      <div>
+        <a href="{% url 'items:report_lost' %}" class="btn btn-secondary" style="margin-right: 8px;">Report a Lost Item</a>
+        <a href="{% url 'items:report_found' %}" class="btn btn-primary">Report a Found Item</a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

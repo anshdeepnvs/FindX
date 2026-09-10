@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Post Found Item | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700 mb-3">
+      <span>🟢</span> Found Item Report
+    </div>
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Post a Found Item</h1>
+    <p class="text-sm text-slate-500 mt-2 max-w-lg mx-auto">
+      Thank you for being a good citizen! Provide the public details of the item you found. FindX will automatically search our database for matching lost reports.
+    </p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    <form method="post" enctype="multipart/form-data" class="space-y-8">
+      {% csrf_token %}
+
+      <!-- 1. Basic Details -->
+      <div>
+        <h2 class="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+          <span>1.</span> Item Details
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Item Title *</label>
+            {{ form.title }}
+            {% if form.title.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Category *</label>
+            {{ form.category }}
+            {% if form.category.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.category.errors.0 }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Brand / Logo</label>
+            {{ form.brand }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Primary Color</label>
+            {{ form.color }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Upload Clear Photo</label>
+            {{ form.image }}
+            <p class="text-[11px] text-slate-400 mt-1">Consider obscuring full serial numbers or private ID photos.</p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Public Description *</label>
+            {{ form.description }}
+            <p class="text-[11px] text-slate-400 mt-1">General condition, visible exterior traits. Do not state secret items inside.</p>
+            {% if form.description.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 2. Location & Date -->
+      <div>
+        <h2 class="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+          <span>2.</span> Where &amp; When Did You Find It?
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">City *</label>
+            {{ form.city }}
+            {% if form.city.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.city.errors.0 }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">State / Province</label>
+            {{ form.state }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Country *</label>
+            {{ form.country }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Date Found *</label>
+            {{ form.date_event }}
+            {% if form.date_event.errors %}<p class="text-xs text-rose-600 mt-1">{{ form.date_event.errors.0 }}</p>{% endif %}
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Landmark / Station / Place</label>
+            {{ form.location_name }}
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 3. PRIVATE IDENTIFICATION VAULT (Anti-Scam) -->
+      <div class="p-6 rounded-2xl bg-gradient-to-tr from-emerald-50 to-teal-50/40 border border-emerald-200">
+        <div class="flex items-center gap-2 text-emerald-950 mb-1">
+          <span class="text-lg">🔒</span>
+          <h2 class="text-base font-bold">Private Verification Details (Anti-Scam Vault - Optional)</h2>
+        </div>
+        <p class="text-xs text-emerald-800 leading-relaxed mb-4">
+          Did you find secret or internal traits (e.g. cards inside, stickers, lockscreen wallpaper, scratches)? Log them here to verify the owner blindly. These are <strong>never displayed publicly</strong>.
+        </p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">Secret Distinguishing Marks / Internal Contents</label>
+            {{ pvt_form.hidden_info }}
+            <p class="text-[11px] text-slate-500 mt-1">e.g. SBI card ending in 4102, photo of dog on wallpaper, specific keychain inside pocket.</p>
+            {% if pvt_form.hidden_info.errors %}<p class="text-xs text-rose-600 mt-1">{{ pvt_form.hidden_info.errors.0 }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">Verification Challenge Question</label>
+            {{ pvt_form.challenge_question }}
+            <p class="text-[11px] text-slate-500 mt-1">Challenge question claimants must answer to prove ownership (e.g. What cards are inside the wallet?).</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-800 mb-1">Serial / IMEI snippet (Optional)</label>
+              {{ pvt_form.serial_hint }}
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-800 mb-1">Private Notes (Optional)</label>
+              {{ pvt_form.additional_notes }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy Notice -->
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-3">
+        <span class="text-xl">🛡️</span>
+        <p>
+          Your phone number and email will not be displayed. When a potential owner contacts you via an AI match, they must answer your verification challenge before contact details can be shared.
+        </p>
+      </div>
+
+      <!-- Submit CTA -->
+      <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+        <a href="{% url 'core:dashboard' %}" class="text-xs font-semibold text-slate-500 hover:text-slate-800">
+          Cancel
+        </a>
+        <button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all">
+          Post Found Item &amp; Check Matches
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

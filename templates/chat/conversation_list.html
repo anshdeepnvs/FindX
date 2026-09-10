@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Messages &amp; Conversations | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="mb-8">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-xs font-bold text-cyan-800 mb-2">
+      <span>💬</span> Secure Chat Vault
+    </div>
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Messages</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Direct in-platform communication between verified match parties. Contact numbers and personal emails are never exposed.
+    </p>
+  </div>
+
+  {% if conversations %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
+      {% for c in conversations %}
+        {% with other=c.participant_b|default:c.participant_a %}
+        {% if c.participant_b == user %}{% with other=c.participant_a %}{% endwith %}{% endif %}
+        <a href="{% url 'chat:conversation_detail' c.id %}" class="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors group">
+          <div class="flex items-center gap-4">
+            <!-- Other User Avatar -->
+            <div class="flex-shrink-0">
+              {% if c.participant_a == user %}
+                {% if c.participant_b.avatar %}
+                  <img src="{{ c.participant_b.avatar.url }}" alt="{{ c.participant_b.username }}" class="w-12 h-12 rounded-2xl object-cover shadow-sm border border-slate-200" />
+                {% else %}
+                  <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center font-bold text-base shadow-sm uppercase">
+                    {{ c.participant_b.username|slice:":1" }}
+                  </div>
+                {% endif %}
+              {% else %}
+                {% if c.participant_a.avatar %}
+                  <img src="{{ c.participant_a.avatar.url }}" alt="{{ c.participant_a.username }}" class="w-12 h-12 rounded-2xl object-cover shadow-sm border border-slate-200" />
+                {% else %}
+                  <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center font-bold text-base shadow-sm uppercase">
+                    {{ c.participant_a.username|slice:":1" }}
+                  </div>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm font-bold text-slate-900 group-hover:text-brand-900 transition-colors">
+                  Match #{{ c.match.id }}: {{ c.match.found_item.title }}
+                </h3>
+                {% if c.is_closed %}
+                  <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                    Closed
+                  </span>
+                {% elif c.unread_count > 0 %}
+                  <span class="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                    {{ c.unread_count }} new
+                  </span>
+                {% endif %}
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Chatting with: <strong>{% if c.participant_a == user %}{{ c.participant_b.get_full_name_or_username }}{% else %}{{ c.participant_a.get_full_name_or_username }}{% endif %}</strong>
+              </p>
+              <span class="text-[11px] text-slate-400">Created {{ c.created_at|timesince }} ago</span>
+            </div>
+          </div>
+          <div class="text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform">
+            {% if c.is_closed %}View History &rarr;{% else %}Open Chat &rarr;{% endif %}
+          </div>
+        </a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-16 bg-white rounded-2xl border border-slate-200 p-6">
+      <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-3">
+        💬
+      </div>
+      <h3 class="text-lg font-bold text-slate-800">No Active Conversations</h3>
+      <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+        Chats are automatically opened when a finder accepts an ownership claim on an item match.
+      </p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

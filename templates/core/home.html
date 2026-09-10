@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Lost & Found | AI-Powered Anti-Scam Recovery Portal{% endblock %}
+
+{% block content %}
+
+<!-- Hero Banner -->
+<section class="hero-section">
+  <div class="container">
+    <div class="hero-tag">🛡️ Powered by Blind AI Verification</div>
+    <h1 class="hero-title">Recover What You Lost. Stop Scammers from Claiming It.</h1>
+    <p class="hero-desc">
+      A global, intelligent platform where honest finders and true owners connect safely. Our proprietary AI and blind challenge system ensures imposters can never guess or claim your property.
+    </p>
+
+    <div class="hero-actions">
+      <a href="{% url 'items:report_lost' %}" class="btn btn-secondary btn-lg">
+        📍 I Lost Something
+      </a>
+      <a href="{% url 'items:report_found' %}" class="btn btn-primary btn-lg">
+        🤝 I Found Something
+      </a>
+      <a href="{% url 'items:item_list' %}" class="btn btn-secondary btn-lg">
+        🔍 Browse Listings
+      </a>
+    </div>
+
+    <!-- Quick Search Bar in Hero -->
+    <div style="max-width: 640px; margin: 36px auto 0 auto;">
+      <form action="{% url 'items:item_list' %}" method="get" style="display: flex; gap: 8px;">
+        <input type="text" name="q" class="form-control" placeholder="Search by item name, city, landmark, or brand..." style="background: rgba(255,255,255,0.95); border: none; padding: 14px 18px; font-size: 1rem; border-radius: var(--radius-sm);">
+        <button type="submit" class="btn btn-primary" style="padding: 12px 24px; white-space: nowrap;">
+          Search
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Anti-Scam 3-Step Explainer Section -->
+<section style="padding: 60px 0; background: var(--white); border-bottom: 1px solid var(--gray-200);">
+  <div class="container">
+    <div style="text-align: center; max-width: 700px; margin: 0 auto 40px auto;">
+      <span class="badge badge-verified" style="margin-bottom: 8px; font-size: 0.8rem;">How It Works</span>
+      <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--dark);">
+        Why Scammers Cannot Cheat Our System
+      </h2>
+      <p style="color: var(--gray-600); font-size: 1rem;">
+        Traditional lost-and-found boards reveal everything, allowing scammers to claim items effortlessly. Here is how our 3-tier protection defends real owners:
+      </p>
+    </div>
+
+    <div class="grid grid-cols-3">
+      <!-- Step 1 -->
+      <div class="card" style="border: 1px solid var(--gray-200); margin-bottom: 0; position: relative;">
+        <div style="font-size: 2.2rem; margin-bottom: 12px;">🔒</div>
+        <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">Step 1</div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: var(--dark);">Hidden Identifying Markers</h3>
+        <p style="font-size: 0.9rem; color: var(--gray-600); line-height: 1.5;">
+          When someone finds an item, they log secret identifying details (lockscreen wallpaper, internal pocket items, scratches, partial serial) that are <strong>strictly hidden</strong> from the public.
+        </p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="card" style="border: 1px solid var(--gray-200); margin-bottom: 0;">
+        <div style="font-size: 2.2rem; margin-bottom: 12px;">✍️</div>
+        <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">Step 2</div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: var(--dark);">Blind Challenge Verification</h3>
+        <p style="font-size: 0.9rem; color: var(--gray-600); line-height: 1.5;">
+          A claimant must answer the finder's blind challenge questions without seeing the answers in advance. Imposters who guess blindly are immediately flagged.
+        </p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="card" style="border: 1px solid var(--gray-200); margin-bottom: 0;">
+        <div style="font-size: 2.2rem; margin-bottom: 12px;">🤖</div>
+        <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">Step 3</div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: var(--dark);">AI Scoring & Safe Handover OTP</h3>
+        <p style="font-size: 0.9rem; color: var(--gray-600); line-height: 1.5;">
+          Our AI compares the claimant's answers against the finder's private notes and provides a 0-100% confidence score. Approved owners receive a one-time Handover PIN for safe exchange.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Recently Found Items -->
+<section style="padding: 50px 0;">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Recently Found Items</h2>
+        <p style="color: var(--gray-500); font-size: 0.95rem;">Browse items recently spotted and safely registered.</p>
+      </div>
+      <a href="{% url 'items:item_list' %}?type=FOUND" class="btn btn-secondary btn-sm">
+        View All Found Items →
+      </a>
+    </div>
+
+    {% if recent_found %}
+      <div class="grid grid-cols-3">
+        {% for item in recent_found %}
+          <div class="item-card">
+            <div class="item-thumb">
+              {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.title }}">
+              {% else %}
+                <div class="item-thumb-placeholder">
+                  {% if item.category %}{{ item.category.icon }}{% else %}📦{% endif %}
+                </div>
+              {% endif %}
+              <div class="item-badge-type">
+                <span class="badge badge-found">Found</span>
+              </div>
+            </div>
+
+            <div class="item-body">
+              <h3 class="item-title">{{ item.title }}</h3>
+              <div class="item-meta">
+                <span>📍 {{ item.city }}</span>
+                <span>📅 {{ item.date_lost_or_found|date:"M d" }}</span>
+              </div>
+              
+              <p class="item-desc">{{ item.public_description }}</p>
+
+              <div class="item-footer">
+                <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">🛡️ Blind Shield Active</span>
+                <a href="{% url 'items:item_detail' item.id %}" class="btn btn-primary btn-sm">Claim Item</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card" style="text-align: center; padding: 40px; color: var(--gray-500);">
+        <p>No found items reported yet. Be the first to help someone by reporting a found item!</p>
+        <div style="margin-top: 14px;">
+          <a href="{% url 'items:report_found' %}" class="btn btn-primary btn-sm">+ Post a Found Item</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Lost Items Banner CTA -->
+    <div class="card" style="margin-top: 40px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px;">
+      <div>
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">
+          Did you lose an important item?
+        </h3>
+        <p style="color: #1e40af; font-size: 0.95rem; max-width: 600px;">
+          Log your lost item details and let our community and automated matching engine notify you when a match is discovered.
+        </p>
+      </div>
+      <a href="{% url 'items:report_lost' %}" class="btn btn-primary btn-lg">
+        Log Lost Item Report
+      </a>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}

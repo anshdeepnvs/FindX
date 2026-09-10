@@ -1,0 +1,144 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Panel{% endblock %} — Lost &amp; Found</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin_panel.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Thin Top Bar -->
+  <header class="navbar" style="position:sticky;top:0;z-index:100;">
+    <div class="container nav-wrapper">
+      <a href="{% url 'core:home' %}" class="nav-brand">
+        🔍 <span>Lost &amp; Found</span> <span class="shield" style="font-size:0.75rem;background:#1e293b;color:#94a3b8;padding:2px 8px;border-radius:20px;margin-left:6px;">⚙️ Admin Panel</span>
+      </a>
+      <nav>
+        <ul class="nav-links">
+          <li>
+            <span style="color:#94a3b8;font-size:0.85rem;">
+              👤 {{ request.user.username }}
+              <span style="background:#dc2626;color:#fff;font-size:0.65rem;padding:1px 7px;border-radius:10px;margin-left:4px;">STAFF</span>
+            </span>
+          </li>
+          <li>
+            <form action="{% url 'accounts:logout' %}" method="post" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
+            </form>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  {% if messages %}
+    <div style="position:fixed;top:70px;right:20px;z-index:9990;display:flex;flex-direction:column;gap:8px;max-width:380px;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" style="box-shadow:0 4px 16px rgba(0,0,0,0.12);border-radius:10px;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Panel Layout -->
+  <div class="panel-layout">
+
+    <!-- Sidebar -->
+    <aside class="panel-sidebar">
+      <div class="sidebar-header">
+        <h2>⚙️ Admin Panel</h2>
+        <p>Lost &amp; Found System</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">Overview</div>
+        <a href="{% url 'panel:dashboard' %}" class="sidebar-link {% block nav_dashboard %}{% endblock %}">
+          <span class="icon">📊</span> Dashboard
+        </a>
+
+        <div class="sidebar-section">Manage</div>
+        <a href="{% url 'panel:user_list' %}" class="sidebar-link {% block nav_users %}{% endblock %}">
+          <span class="icon">👥</span> Users
+        </a>
+        <a href="{% url 'panel:item_list' %}" class="sidebar-link {% block nav_items %}{% endblock %}">
+          <span class="icon">📦</span> Items
+        </a>
+        <a href="{% url 'panel:claim_list' %}" class="sidebar-link {% block nav_claims %}{% endblock %}">
+          <span class="icon">📋</span> Claims
+        </a>
+        <a href="{% url 'panel:category_list' %}" class="sidebar-link {% block nav_categories %}{% endblock %}">
+          <span class="icon">🏷️</span> Categories
+        </a>
+
+        <div class="sidebar-section">Django</div>
+        <a href="{% url 'admin:index' %}" class="sidebar-link" target="_blank">
+          <span class="icon">🛠️</span> Django Admin ↗
+        </a>
+      </nav>
+
+      <div class="sidebar-back">
+        <a href="{% url 'core:home' %}">← Back to Website</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="panel-main">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div class="confirm-modal" id="confirmModal">
+    <div class="confirm-box">
+      <div class="icon">⚠️</div>
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalMessage">Are you sure? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-panel btn-panel-secondary" onclick="closeModal()">Cancel</button>
+        <form id="modalForm" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn-panel btn-panel-danger" id="modalConfirmBtn">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Confirm modal helpers
+    function confirmAction(title, message, url, btnLabel, btnClass) {
+      document.getElementById('modalTitle').textContent   = title;
+      document.getElementById('modalMessage').textContent = message;
+      document.getElementById('modalForm').action         = url;
+      const btn = document.getElementById('modalConfirmBtn');
+      btn.textContent = btnLabel || 'Confirm';
+      btn.className   = 'btn-panel ' + (btnClass || 'btn-panel-danger');
+      document.getElementById('confirmModal').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('confirmModal').classList.remove('open');
+    }
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // Auto-dismiss flash messages after 4 seconds
+    setTimeout(() => {
+      document.querySelectorAll('.alert').forEach(el => {
+        el.style.transition = 'opacity 0.5s';
+        el.style.opacity    = '0';
+        setTimeout(() => el.remove(), 500);
+      });
+    }, 4000);
+  </script>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

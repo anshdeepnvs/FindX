@@ -1,0 +1,195 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<h1 class="panel-title">📊 Dashboard</h1>
+<p class="panel-subtitle">System overview — Lost &amp; Found Anti-Scam Platform</p>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card stat-blue">
+    <div class="stat-icon">👥</div>
+    <div class="stat-value">{{ total_users }}</div>
+    <div class="stat-label">Total Users</div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ verified_users }}</div>
+    <div class="stat-label">Verified Accounts</div>
+  </div>
+  <div class="stat-card stat-yellow">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-value">{{ unverified_users }}</div>
+    <div class="stat-label">Unverified Users</div>
+  </div>
+  <div class="stat-card stat-indigo">
+    <div class="stat-icon">📦</div>
+    <div class="stat-value">{{ total_items }}</div>
+    <div class="stat-label">Total Items</div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-icon">🔍</div>
+    <div class="stat-value">{{ open_items }}</div>
+    <div class="stat-label">Active Listings</div>
+  </div>
+  <div class="stat-card stat-purple">
+    <div class="stat-icon">🤝</div>
+    <div class="stat-value">{{ resolved_items }}</div>
+    <div class="stat-label">Resolved Items</div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-icon">📋</div>
+    <div class="stat-value">{{ total_claims }}</div>
+    <div class="stat-label">Total Claims</div>
+  </div>
+  <div class="stat-card stat-yellow">
+    <div class="stat-icon">🕐</div>
+    <div class="stat-value">{{ pending_claims }}</div>
+    <div class="stat-label">Pending Claims</div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-icon">🚨</div>
+    <div class="stat-value">{{ fraud_alerts }}</div>
+    <div class="stat-label">Fraud Alerts</div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
+  <a href="{% url 'panel:user_list' %}?status=unverified" class="btn-panel btn-panel-warning">⏳ Unverified Users ({{ unverified_users }})</a>
+  <a href="{% url 'panel:claim_list' %}?status=PENDING" class="btn-panel btn-panel-primary">📋 Pending Claims ({{ pending_claims }})</a>
+  <a href="{% url 'panel:item_list' %}?status=OPEN" class="btn-panel btn-panel-secondary">📦 Open Items ({{ open_items }})</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+
+  <!-- Recent Users -->
+  <div class="panel-section">
+    <div class="panel-section-header">
+      <h3>👥 Recent Registrations</h3>
+      <a href="{% url 'panel:user_list' %}" class="btn-panel btn-panel-secondary btn-panel-sm">View All</a>
+    </div>
+    <table class="panel-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in recent_users %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td style="font-size:0.8rem;color:#64748b;">{{ u.email }}</td>
+          <td>
+            {% if u.is_email_verified %}
+              <span class="badge badge-green">✓ Verified</span>
+            {% else %}
+              <span class="badge badge-yellow">⏳ Unverified</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'panel:user_detail' u.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px;">No users yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent Items -->
+  <div class="panel-section">
+    <div class="panel-section-header">
+      <h3>📦 Recent Items</h3>
+      <a href="{% url 'panel:item_list' %}" class="btn-panel btn-panel-secondary btn-panel-sm">View All</a>
+    </div>
+    <table class="panel-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in recent_items %}
+        <tr>
+          <td><strong>{{ item.title|truncatechars:30 }}</strong><br><span style="font-size:0.75rem;color:#94a3b8;">{{ item.city }}</span></td>
+          <td>
+            {% if item.item_type == "LOST" %}
+              <span class="badge badge-red">🔴 Lost</span>
+            {% else %}
+              <span class="badge badge-green">🟢 Found</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.status == "OPEN" %}
+              <span class="badge badge-blue">Open</span>
+            {% elif item.status == "RESOLVED" %}
+              <span class="badge badge-green">Resolved</span>
+            {% elif item.status == "CLAIM_PENDING" %}
+              <span class="badge badge-yellow">Claim Pending</span>
+            {% else %}
+              <span class="badge badge-gray">Closed</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'panel:item_detail' item.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px;">No items yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Claims -->
+<div class="panel-section">
+  <div class="panel-section-header">
+    <h3>📋 Recent Claims</h3>
+    <a href="{% url 'panel:claim_list' %}" class="btn-panel btn-panel-secondary btn-panel-sm">View All</a>
+  </div>
+  <table class="panel-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Claimant</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for claim in recent_claims %}
+      <tr>
+        <td style="color:#94a3b8;">#{{ claim.id }}</td>
+        <td><strong>{{ claim.item.title|truncatechars:35 }}</strong></td>
+        <td>{{ claim.claimant.username }}</td>
+        <td>
+          {% if claim.status == "PENDING" %}   <span class="badge badge-yellow">Pending</span>
+          {% elif claim.status == "ACCEPTED" %}<span class="badge badge-green">Accepted</span>
+          {% elif claim.status == "REJECTED" %}<span class="badge badge-red">Rejected</span>
+          {% else %}                           <span class="badge badge-gray">Cancelled</span>
+          {% endif %}
+        </td>
+        <td style="font-size:0.8rem;color:#94a3b8;">{{ claim.created_at|date:"d M Y" }}</td>
+        <td>
+          <a href="{% url 'panel:claim_detail' claim.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No claims yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

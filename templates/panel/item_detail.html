@@ -1,0 +1,130 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Item #{{ item.id }}{% endblock %}
+{% block nav_items %}active{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;">
+  <a href="{% url 'panel:item_list' %}" style="color:#64748b;font-size:0.85rem;">← Items</a>
+  <span style="color:#cbd5e1;">/</span>
+  <h1 class="panel-title" style="margin:0;">{{ item.title }}</h1>
+  {% if item.item_type == "LOST" %}<span class="badge badge-red">🔴 Lost</span>
+  {% else %}<span class="badge badge-green">🟢 Found</span>{% endif %}
+  {% if item.status == "OPEN" %}<span class="badge badge-blue">Open</span>
+  {% elif item.status == "CLAIM_PENDING" %}<span class="badge badge-yellow">Claim Pending</span>
+  {% elif item.status == "RESOLVED" %}<span class="badge badge-green">Resolved</span>
+  {% else %}<span class="badge badge-gray">Closed</span>{% endif %}
+</div>
+<p class="panel-subtitle">Item #{{ item.id }} — Posted {{ item.created_at|date:"d M Y, H:i" }}</p>
+
+<!-- Change Status -->
+<div class="action-box" style="margin-bottom:20px;">
+  <h4>🔄 Change Item Status</h4>
+  <form method="post" action="{% url 'panel:item_change_status' item.id %}" class="action-row">
+    {% csrf_token %}
+    <select name="status" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:7px;font-size:0.875rem;">
+      <option value="OPEN"          {% if item.status == "OPEN" %}selected{% endif %}>Active Listing</option>
+      <option value="CLAIM_PENDING" {% if item.status == "CLAIM_PENDING" %}selected{% endif %}>Claim Under Review</option>
+      <option value="RESOLVED"      {% if item.status == "RESOLVED" %}selected{% endif %}>Returned to Owner</option>
+      <option value="CLOSED"        {% if item.status == "CLOSED" %}selected{% endif %}>Closed</option>
+    </select>
+    <button type="submit" class="btn-panel btn-panel-primary">Update Status</button>
+  </form>
+</div>
+
+<div class="detail-grid">
+  <!-- Public Info -->
+  <div class="detail-card">
+    <h4>📋 Public Information</h4>
+    <div class="detail-row"><span class="key">Category</span><span class="val">{{ item.category|default:"—" }}</span></div>
+    <div class="detail-row"><span class="key">City</span><span class="val">{{ item.city }}</span></div>
+    <div class="detail-row"><span class="key">Country</span><span class="val">{{ item.country }}</span></div>
+    <div class="detail-row"><span class="key">Location Details</span><span class="val">{{ item.location_details }}</span></div>
+    <div class="detail-row"><span class="key">Date Lost/Found</span><span class="val">{{ item.date_lost_or_found|date:"d M Y" }}</span></div>
+    <div class="detail-row"><span class="key">Primary Color</span><span class="val">{{ item.primary_color|default:"—" }}</span></div>
+    <div class="detail-row"><span class="key">Brand</span><span class="val">{{ item.brand|default:"—" }}</span></div>
+    <div class="detail-row"><span class="key">Reporter</span>
+      <span class="val"><a href="{% url 'panel:user_detail' item.reporter.id %}">{{ item.reporter.username }}</a></span>
+    </div>
+    <div class="detail-row"><span class="key">Last Updated</span><span class="val">{{ item.updated_at|date:"d M Y, H:i" }}</span></div>
+  </div>
+
+  <!-- Anti-Scam Private Fields (Admin Only) -->
+  <div class="detail-card">
+    <h4>🔒 Private / Anti-Scam Fields <span style="color:#ef4444;font-size:0.7rem;">(ADMIN ONLY)</span></h4>
+    <div style="margin-bottom:12px;">
+      <p style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Challenge Question:</p>
+      <div class="hidden-detail-box">{{ item.challenge_question|default:"—" }}</div>
+    </div>
+    <div>
+      <p style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Hidden Identifying Details:</p>
+      <div class="hidden-detail-box">{{ item.hidden_details|default:"No hidden details provided." }}</div>
+    </div>
+    {% if item.image %}
+    <div style="margin-top:14px;">
+      <p style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Item Photo:</p>
+      <img src="{{ item.image.url }}" alt="Item photo" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;">
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Public Description -->
+<div class="detail-card" style="margin-bottom:20px;">
+  <h4>📝 Public Description</h4>
+  <p style="font-size:0.9rem;color:#334155;line-height:1.7;">{{ item.public_description }}</p>
+</div>
+
+<!-- Danger Zone -->
+<div class="danger-zone" style="margin-bottom:28px;">
+  <h5>⚠️ Danger Zone</h5>
+  <p style="font-size:0.85rem;color:#991b1b;margin-bottom:12px;">Permanently delete this item and all its claims and AI analyses.</p>
+  <button class="btn-panel btn-panel-danger"
+    onclick="confirmAction('Delete Item',
+      'Delete &quot;{{ item.title }}&quot;? All claims and AI analyses will also be deleted.',
+      '{% url 'panel:item_delete' item.id %}',
+      '🗑️ Delete Permanently', 'btn-panel-danger')">
+    🗑️ Delete Item
+  </button>
+</div>
+
+<!-- Claims on this Item -->
+<div class="panel-section">
+  <div class="panel-section-header">
+    <h3>📋 Claims on this Item ({{ claims.count }})</h3>
+  </div>
+  <table class="panel-table">
+    <thead>
+      <tr><th>#</th><th>Claimant</th><th>Status</th><th>AI Score</th><th>Handover</th><th>Date</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for claim in claims %}
+      <tr>
+        <td style="color:#94a3b8;">#{{ claim.id }}</td>
+        <td><a href="{% url 'panel:user_detail' claim.claimant.id %}">{{ claim.claimant.username }}</a></td>
+        <td>
+          {% if claim.status == "PENDING" %}<span class="badge badge-yellow">Pending</span>
+          {% elif claim.status == "ACCEPTED" %}<span class="badge badge-green">Accepted</span>
+          {% elif claim.status == "REJECTED" %}<span class="badge badge-red">Rejected</span>
+          {% else %}<span class="badge badge-gray">Cancelled</span>{% endif %}
+        </td>
+        <td>
+          {% if claim.ai_analysis %}
+            <span style="font-weight:600;{% if claim.ai_analysis.match_score >= 70 %}color:#10b981;{% elif claim.ai_analysis.match_score >= 40 %}color:#f59e0b;{% else %}color:#ef4444;{% endif %}">
+              {{ claim.ai_analysis.match_score|floatformat:0 }}%
+            </span>
+          {% else %}<span style="color:#94a3b8;">—</span>{% endif %}
+        </td>
+        <td>
+          {% if claim.is_handover_complete %}<span class="badge badge-green">✓ Done</span>
+          {% else %}<span class="badge badge-gray">Pending</span>{% endif %}
+        </td>
+        <td style="font-size:0.8rem;color:#94a3b8;">{{ claim.created_at|date:"d M Y" }}</td>
+        <td><a href="{% url 'panel:claim_detail' claim.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px;">No claims on this item.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Claims{% endblock %}
+{% block nav_claims %}active{% endblock %}
+
+{% block content %}
+<h1 class="panel-title">📋 Claims Management</h1>
+<p class="panel-subtitle">{{ total }} claim{{ total|pluralize }} found</p>
+
+<form method="get" class="filter-bar">
+  <input type="text" name="q" value="{{ q }}" placeholder="🔍 Search claimant or item title...">
+  <select name="status">
+    <option value="">All Status</option>
+    <option value="PENDING"   {% if filter_status == "PENDING" %}selected{% endif %}>⏳ Pending</option>
+    <option value="ACCEPTED"  {% if filter_status == "ACCEPTED" %}selected{% endif %}>✅ Accepted</option>
+    <option value="REJECTED"  {% if filter_status == "REJECTED" %}selected{% endif %}>❌ Rejected</option>
+    <option value="CANCELLED" {% if filter_status == "CANCELLED" %}selected{% endif %}>🚫 Cancelled</option>
+  </select>
+  <button type="submit" class="btn-panel btn-panel-primary">Filter</button>
+  <a href="{% url 'panel:claim_list' %}" class="btn-panel btn-panel-secondary">Clear</a>
+</form>
+
+<div class="panel-section">
+  <table class="panel-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Claimant</th>
+        <th>Status</th>
+        <th>AI Score</th>
+        <th>AI Confidence</th>
+        <th>Handover</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for claim in claims %}
+      <tr>
+        <td style="color:#94a3b8;font-size:0.8rem;">#{{ claim.id }}</td>
+        <td>
+          <a href="{% url 'panel:item_detail' claim.item.id %}" style="font-weight:600;color:#2563eb;font-size:0.85rem;">
+            {{ claim.item.title|truncatechars:30 }}
+          </a>
+        </td>
+        <td>
+          <a href="{% url 'panel:user_detail' claim.claimant.id %}" style="color:#475569;">
+            {{ claim.claimant.username }}
+          </a>
+        </td>
+        <td>
+          {% if claim.status == "PENDING" %}<span class="badge badge-yellow">⏳ Pending</span>
+          {% elif claim.status == "ACCEPTED" %}<span class="badge badge-green">✅ Accepted</span>
+          {% elif claim.status == "REJECTED" %}<span class="badge badge-red">❌ Rejected</span>
+          {% else %}<span class="badge badge-gray">🚫 Cancelled</span>{% endif %}
+        </td>
+        <td>
+          {% if claim.ai_analysis %}
+            <div class="score-bar-wrap">
+              <div class="score-bar">
+                <div class="score-bar-fill" style="width:{{ claim.ai_analysis.match_score }}%;
+                  background:{% if claim.ai_analysis.match_score >= 70 %}#10b981{% elif claim.ai_analysis.match_score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">
+                </div>
+              </div>
+              <span style="font-weight:600;font-size:0.82rem;">{{ claim.ai_analysis.match_score|floatformat:0 }}%</span>
+            </div>
+          {% else %}<span style="color:#94a3b8;font-size:0.82rem;">Not scored</span>{% endif %}
+        </td>
+        <td>
+          {% if claim.ai_analysis %}
+            {% if claim.ai_analysis.confidence_level == "HIGH" %}<span class="badge badge-green">High</span>
+            {% elif claim.ai_analysis.confidence_level == "MODERATE" %}<span class="badge badge-yellow">Moderate</span>
+            {% elif claim.ai_analysis.confidence_level == "LOW" %}<span class="badge badge-orange">Low</span>
+            {% else %}<span class="badge badge-red">🚨 Fraud Alert</span>{% endif %}
+          {% else %}<span style="color:#94a3b8;">—</span>{% endif %}
+        </td>
+        <td>
+          {% if claim.is_handover_complete %}<span class="badge badge-green">✓ Done</span>
+          {% else %}<span class="badge badge-gray">No</span>{% endif %}
+        </td>
+        <td style="font-size:0.78rem;color:#94a3b8;">{{ claim.created_at|date:"d M Y" }}</td>
+        <td style="display:flex;gap:5px;flex-wrap:wrap;">
+          <a href="{% url 'panel:claim_detail' claim.id %}" class="btn-panel btn-panel-primary btn-panel-sm">View</a>
+          <button class="btn-panel btn-panel-danger btn-panel-sm"
+            onclick="confirmAction('Delete Claim',
+              'Delete Claim #{{ claim.id }} by {{ claim.claimant.username }}? This cannot be undone.',
+              '{% url 'panel:claim_delete' claim.id %}',
+              '🗑️ Delete', 'btn-panel-danger')">
+            🗑️
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No claims found.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

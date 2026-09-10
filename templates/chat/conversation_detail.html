@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if conversation.status == 'AI_VERIFICATION' %}
+    AI Verification &bull; {{ conversation.match.found_item.title }} | FindX
+  {% else %}
+    Chat with {{ other.get_full_name_or_username }} | FindX
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+
+  <!-- Chat Header -->
+  <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="{% url 'chat:conversation_list' %}" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Back to conversations">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+
+      <!-- Avatar -->
+      <div class="relative">
+        {% if conversation.status == 'AI_VERIFICATION' %}
+          <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-900 text-white flex items-center justify-center font-bold text-xl shadow-sm border border-cyan-300">
+            🤖
+          </div>
+        {% elif other.avatar %}
+          <img src="{{ other.avatar.url }}" alt="{{ other.username }}" class="w-11 h-11 rounded-full object-cover shadow-sm border border-slate-200" />
+        {% else %}
+          <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center font-bold text-sm uppercase shadow-sm">
+            {{ other.username|slice:":1" }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          {% if conversation.status == 'AI_VERIFICATION' %}
+            <span>FindX AI Ownership Verification Officer</span>
+          {% else %}
+            <span>{{ other.get_full_name_or_username }}</span>
+            <span class="text-[11px] font-normal text-slate-500">
+              ({% if is_claimant %}Finder{% else %}Claimant / Potential Owner{% endif %})
+            </span>
+          {% endif %}
+        </h2>
+
+        <div class="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap mt-0.5">
+          <span>Item: <strong>{{ conversation.match.found_item.title }}</strong></span>
+          <span>&bull;</span>
+
+          {% if is_closed %}
+            <span class="text-slate-600 font-semibold flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Closed &bull; Item Returned
+            </span>
+          {% elif conversation.status == 'AI_VERIFICATION' %}
+            <span class="text-cyan-600 font-semibold flex items-center gap-1.5 bg-cyan-50 px-2.5 py-0.5 rounded-full text-[10px] border border-cyan-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span> AI Verification Phase (5 Steps)
+            </span>
+          {% elif conversation.status == 'PENDING_FINDER' %}
+            <span class="text-amber-700 font-semibold flex items-center gap-1.5 bg-amber-50 px-2.5 py-0.5 rounded-full text-[10px] border border-amber-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> AI Verified &bull; Awaiting Finder Review
+            </span>
+          {% else %}
+            <span class="text-emerald-600 font-semibold flex items-center gap-1.5 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Protected Handover Chat Active
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="{% url 'matching:match_detail' conversation.match.id %}" class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors">
+        View Match Details
+      </a>
+    </div>
+  </div>
+
+  <!-- FINDER ACTION CARD: Pending Finder Review & Confirmation -->
+  {% if conversation.status == 'PENDING_FINDER' and is_finder %}
+    <div class="p-5 bg-gradient-to-r from-amber-50 via-cyan-50 to-emerald-50 rounded-2xl border-2 border-amber-300 shadow-sm space-y-3 animate-fade-in">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="space-y-1">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase tracking-wide">
+            <span>🛡️</span> Action Required: Confirm Genuine Owner
+          </div>
+          <h3 class="text-sm font-extrabold text-slate-900">
+            Claimant has completed AI Verification with an AI Score of <span class="text-emerald-700">{{ conversation.ai_score|floatformat:0 }}%</span>
+          </h3>
+          <p class="text-xs text-slate-600 max-w-xl leading-relaxed">
+            Review the 5-step interview transcript and any uploaded proof photos in the chat below.
+            When you confirm, FindX will release the safe 6-digit Handover OTP for your in-person exchange.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <!-- Confirm & Accept Form -->
+          <form method="POST" action="{% url 'chat:confirm_owner' conversation.id %}" onsubmit="return confirm('Are you sure you want to confirm and accept this user as the genuine owner? This will generate the Handover OTP.');">
+            {% csrf_token %}
+            <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 hover:scale-105">
+              <span>✓ Confirm &amp; Accept Owner</span>
+            </button>
+          </form>
+
+          <!-- Decline Form -->
+          <form method="POST" action="{% url 'chat:decline_claim' conversation.id %}" onsubmit="return confirm('Are you sure you want to decline this claim?');">
+            {% csrf_token %}
+            <button type="submit" class="px-3 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold transition-colors">
+              Decline
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% elif conversation.status == 'PENDING_FINDER' and is_claimant %}
+    <div class="p-4 bg-cyan-50 border border-cyan-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-cyan-900">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">⏳</span>
+        <div>
+          <strong class="font-bold">AI Verification Complete (Score: {{ conversation.ai_score|floatformat:0 }}%)!</strong>
+          <p class="text-[11px] text-cyan-800 mt-0.5">The finder has been notified to review your verification interview and confirm the handover. You will receive your Handover OTP once confirmed.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- ACTIVE HANDOVER & OTP CARD -->
+  {% if conversation.status == 'ACTIVE' and claim and claim.finder_verified %}
+    <div class="p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl border-2 border-emerald-300 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {% if is_claimant %}
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold uppercase">
+              <span>🔐</span> In-Person Handover OTP
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-xs text-slate-600">Your Handover OTP:</span>
+              <span class="text-2xl font-mono font-extrabold tracking-widest text-emerald-800 bg-white px-3 py-1 rounded-xl border border-emerald-200 shadow-xs">
+                {{ claim.handover_otp }}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500">
+              Keep this private. Give this 6-digit OTP to {{ other.get_full_name_or_username }} only after you inspect and receive your item in person.
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <a href="{% url 'claims:receipt_confirm' claim.id %}" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow transition-all block text-center">
+              Confirm Receipt of Item &rarr;
+            </a>
+          </div>
+        {% else %}
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold uppercase">
+              <span>🤝</span> Handover Accepted
+            </div>
+            <h4 class="text-sm font-bold text-slate-900">Coordinate Handover with {{ other.get_full_name_or_username }}</h4>
+            <p class="text-[11px] text-slate-600 max-w-lg leading-relaxed">
+              Arrange a safe, public meeting spot. When you meet the owner, ask them for their 6-digit Handover OTP before handing over the item.
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <a href="{% url 'claims:return_confirm' claim.id %}" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow transition-all block text-center">
+              Mark as Handed Over &rarr;
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Messages Scroll Area -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[580px] overflow-hidden">
+    
+    <!-- Messages Feed -->
+    <div id="messagesBox" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
+      
+      <!-- Privacy Escrow Banner -->
+      <div class="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-center text-xs text-cyan-900">
+        <p class="font-bold">🔒 FindX Verified Escrow</p>
+        <p class="text-[11px] text-cyan-800 mt-0.5">
+          All ownership verification answers and communications are securely logged. Meet only in well-lit public spots.
+        </p>
+      </div>
+
+      {% for m in chat_messages %}
+        {% if m.is_ai %}
+          <!-- AI Officer or System Message -->
+          {% if m.message_type == 'VERDICT' %}
+            <!-- AI Verdict Card -->
+            <div class="p-4 bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 text-white rounded-2xl shadow-md border border-cyan-500/30 message-item space-y-2" data-id="{{ m.id }}">
+              <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
+                  <span>🤖</span> FindX AI Verification Assessment
+                </span>
+                <span class="text-[10px] text-slate-300">{{ m.created_at|date:"g:i A" }}</span>
+              </div>
+              <div class="text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+                {{ m.content }}
+              </div>
+            </div>
+
+          {% elif m.message_type == 'SYSTEM' %}
+            <!-- System Announcement Message -->
+            <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl text-xs leading-relaxed text-center message-item font-medium space-y-1" data-id="{{ m.id }}">
+              <div class="whitespace-pre-line">{{ m.content }}</div>
+              <div class="text-[10px] text-emerald-600">{{ m.created_at|date:"g:i A" }}</div>
+            </div>
+
+          {% else %}
+            <!-- AI Interrogation Question Bubble -->
+            <div class="flex items-start justify-start gap-3 message-item" data-id="{{ m.id }}">
+              <div class="flex-shrink-0">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-900 text-white flex items-center justify-center text-sm font-bold shadow-xs border border-cyan-300">
+                  🤖
+                </div>
+              </div>
+              <div class="flex flex-col items-start max-w-[85%]">
+                <span class="text-[10px] font-bold text-cyan-800 mb-1 px-1">
+                  FindX AI Officer &bull; {{ m.created_at|date:"g:i A" }}
+                </span>
+                <div class="px-4 py-3 rounded-2xl text-sm leading-relaxed bg-white text-slate-800 border-2 border-cyan-200/80 rounded-tl-none shadow-xs whitespace-pre-line break-words">
+                  {{ m.content }}
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
+        {% elif m.sender == user %}
+          <!-- Current user message (Right aligned) -->
+          <div class="flex items-end justify-end gap-2.5 message-item" data-id="{{ m.id }}">
+            <div class="flex flex-col items-end max-w-[80%]">
+              <span class="text-[10px] font-semibold text-slate-400 mb-1 px-1">
+                You &bull; {{ m.created_at|date:"g:i A" }}
+              </span>
+              <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed bg-brand-900 text-white rounded-br-none shadow-sm break-words whitespace-pre-line">
+                {{ m.content }}
+                {% if m.image %}
+                  <div class="mt-2">
+                    <a href="{{ m.image.url }}" target="_blank" rel="noopener">
+                      <img src="{{ m.image.url }}" alt="Proof Image" class="max-w-[240px] max-h-[180px] rounded-xl object-cover border border-white/20 shadow-xs hover:opacity-90 transition-opacity" />
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              {% if m.sender.avatar %}
+                <img src="{{ m.sender.avatar.url }}" alt="You" class="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200" />
+              {% else %}
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-900 to-cyan-800 text-white flex items-center justify-center text-xs font-bold uppercase shadow-xs">
+                  {{ m.sender.username|slice:":1" }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+        {% else %}
+          <!-- Other participant message (Left aligned) -->
+          <div class="flex items-end justify-start gap-2.5 message-item" data-id="{{ m.id }}">
+            <div class="flex-shrink-0">
+              {% if m.sender.avatar %}
+                <img src="{{ m.sender.avatar.url }}" alt="{{ m.sender.username }}" class="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200" />
+              {% else %}
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center text-xs font-bold uppercase shadow-xs">
+                  {{ m.sender.username|slice:":1" }}
+                </div>
+              {% endif %}
+            </div>
+            <div class="flex flex-col items-start max-w-[80%]">
+              <span class="text-[10px] font-semibold text-slate-400 mb-1 px-1">
+                {{ m.sender.get_full_name_or_username }} &bull; {{ m.created_at|date:"g:i A" }}
+              </span>
+              <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm break-words whitespace-pre-line">
+                {{ m.content }}
+                {% if m.image %}
+                  <div class="mt-2">
+                    <a href="{{ m.image.url }}" target="_blank" rel="noopener">
+                      <img src="{{ m.image.url }}" alt="Proof Image" class="max-w-[240px] max-h-[180px] rounded-xl object-cover border border-slate-200 shadow-xs hover:opacity-90 transition-opacity" />
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <!-- Closed Notice Banner if item was returned -->
+      {% if is_closed %}
+        <div id="closedBanner" class="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center text-xs text-slate-600 space-y-1 mt-4">
+          <div class="font-bold text-slate-800 flex items-center justify-center gap-1.5 text-sm">
+            <span>🔒</span> Case Closed &mdash; Item Successfully Returned
+          </div>
+          <p class="text-slate-500">
+            This conversation is closed because return of the item was confirmed. Messages remain archived for safety and verification.
+          </p>
+        </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Message Input Bar -->
+    <div id="inputArea" class="p-4 bg-white border-t border-slate-200">
+      {% if is_closed %}
+        <div class="p-3 bg-slate-100 rounded-xl text-center text-xs text-slate-500 font-semibold">
+          🔒 This chat has been closed because the item was returned.
+        </div>
+      {% elif conversation.status == 'AI_VERIFICATION' and is_finder %}
+        <div class="p-3.5 bg-slate-50 rounded-xl text-center text-xs text-slate-500 border border-slate-200">
+          🤖 The claimant is currently taking the AI Ownership Verification interview. You will be invited to review once they finish.
+        </div>
+      {% else %}
+        <!-- Preview attachment chip -->
+        <div id="imagePreviewBar" class="hidden mb-2 px-3 py-1.5 rounded-xl bg-cyan-50 border border-cyan-200 items-center justify-between text-xs text-cyan-900">
+          <span class="flex items-center gap-1.5 truncate">
+            <span>📎</span>
+            <span id="imagePreviewName" class="truncate font-semibold">photo.jpg</span>
+          </span>
+          <button type="button" id="clearImageBtn" class="text-rose-600 hover:text-rose-800 font-bold ml-2 text-xs">Remove</button>
+        </div>
+
+        <form id="chatForm" class="flex items-center gap-2" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="file" id="chatImageInput" name="image" accept="image/*" class="hidden" />
+
+          <!-- Attachment Paperclip Button -->
+          <button type="button" id="attachBtn" class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0" title="Attach Proof Photo (Receipt, Box, Item)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+          </button>
+
+          <input type="text" id="chatInput" placeholder="{% if conversation.status == 'AI_VERIFICATION' %}Type your answer to the AI verification question...{% else %}Type a message to coordinate handover...{% endif %}" required autocomplete="off" class="findx-input flex-1" />
+
+          <button type="submit" id="sendBtn" class="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-md transition-colors flex-shrink-0 flex items-center gap-1.5">
+            <span>Send</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const box = document.getElementById('messagesBox');
+  const form = document.getElementById('chatForm');
+  const input = document.getElementById('chatInput');
+  const attachBtn = document.getElementById('attachBtn');
+  const imageInput = document.getElementById('chatImageInput');
+  const previewBar = document.getElementById('imagePreviewBar');
+  const previewName = document.getElementById('imagePreviewName');
+  const clearImageBtn = document.getElementById('clearImageBtn');
+  const sendBtn = document.getElementById('sendBtn');
+
+  const currentUserId = {{ user.id }};
+  const convoId = {{ conversation.id }};
+  let currentConvoStatus = "{{ conversation.status }}";
+
+  // Auto scroll to bottom
+  function scrollToBottom() {
+    if (box) {
+      box.scrollTop = box.scrollHeight;
+    }
+  }
+  scrollToBottom();
+
+  // Handle Image Attachment Button
+  if (attachBtn && imageInput) {
+    attachBtn.addEventListener('click', () => imageInput.click());
+
+    imageInput.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        previewName.textContent = this.files[0].name;
+        previewBar.classList.remove('hidden');
+        previewBar.classList.add('flex');
+        input.removeAttribute('required'); // File alone or file+text allowed
+      }
+    });
+
+    clearImageBtn.addEventListener('click', function() {
+      imageInput.value = '';
+      previewBar.classList.add('hidden');
+      previewBar.classList.remove('flex');
+      input.setAttribute('required', 'required');
+    });
+  }
+
+  // Find highest message ID in DOM
+  function getLatestId() {
+    const msgs = document.querySelectorAll('.message-item');
+    if (msgs.length === 0) return 0;
+    return parseInt(msgs[msgs.length - 1].getAttribute('data-id')) || 0;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    const p = document.createElement('p');
+    p.textContent = str;
+    return p.innerHTML;
+  }
+
+  function renderMessageHtml(m) {
+    const div = document.createElement('div');
+    div.setAttribute('data-id', m.id);
+
+    if (m.is_ai) {
+      if (m.message_type === 'VERDICT') {
+        div.className = 'p-4 bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 text-white rounded-2xl shadow-md border border-cyan-500/30 message-item space-y-2';
+        div.innerHTML = `
+          <div class="flex items-center justify-between border-b border-white/10 pb-2">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
+              <span>🤖</span> FindX AI Verification Assessment
+            </span>
+            <span class="text-[10px] text-slate-300">${m.created_at}</span>
+          </div>
+          <div class="text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+            ${escapeHtml(m.content)}
+          </div>
+        `;
+      } else if (m.message_type === 'SYSTEM') {
+        div.className = 'p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl text-xs leading-relaxed text-center message-item font-medium space-y-1';
+        div.innerHTML = `
+          <div class="whitespace-pre-line">${escapeHtml(m.content)}</div>
+          <div class="text-[10px] text-emerald-600">${m.created_at}</div>
+        `;
+      } else {
+        // Regular AI Question
+        div.className = 'flex items-start justify-start gap-3 message-item';
+        div.innerHTML = `
+          <div class="flex-shrink-0">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-900 text-white flex items-center justify-center text-sm font-bold shadow-xs border border-cyan-300">
+              🤖
+            </div>
+          </div>
+          <div class="flex flex-col items-start max-w-[85%]">
+            <span class="text-[10px] font-bold text-cyan-800 mb-1 px-1">
+              FindX AI Officer &bull; ${m.created_at}
+            </span>
+            <div class="px-4 py-3 rounded-2xl text-sm leading-relaxed bg-white text-slate-800 border-2 border-cyan-200/80 rounded-tl-none shadow-xs whitespace-pre-line break-words">
+              ${escapeHtml(m.content)}
+            </div>
+          </div>
+        `;
+      }
+    } else if (m.is_me || m.sender_id === currentUserId) {
+      // User message
+      const avatarHtml = m.avatar_url
+        ? `<img src="${m.avatar_url}" alt="${escapeHtml(m.sender)}" class="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200" />`
+        : `<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-900 to-cyan-800 text-white flex items-center justify-center text-xs font-bold uppercase shadow-xs">${m.initial || 'U'}</div>`;
+
+      const imageHtml = m.image_url
+        ? `<div class="mt-2"><a href="${m.image_url}" target="_blank" rel="noopener"><img src="${m.image_url}" class="max-w-[240px] max-h-[180px] rounded-xl object-cover border border-white/20 shadow-xs hover:opacity-90 transition-opacity" /></a></div>`
+        : '';
+
+      div.className = 'flex items-end justify-end gap-2.5 message-item';
+      div.innerHTML = `
+        <div class="flex flex-col items-end max-w-[80%]">
+          <span class="text-[10px] font-semibold text-slate-400 mb-1 px-1">
+            You &bull; ${m.created_at}
+          </span>
+          <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed bg-brand-900 text-white rounded-br-none shadow-sm break-words whitespace-pre-line">
+            ${escapeHtml(m.content)}
+            ${imageHtml}
+          </div>
+        </div>
+        <div class="flex-shrink-0">
+          ${avatarHtml}
+        </div>
+      `;
+    } else {
+      // Other peer message
+      const avatarHtml = m.avatar_url
+        ? `<img src="${m.avatar_url}" alt="${escapeHtml(m.sender)}" class="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200" />`
+        : `<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center text-xs font-bold uppercase shadow-xs">${m.initial || 'O'}</div>`;
+
+      const imageHtml = m.image_url
+        ? `<div class="mt-2"><a href="${m.image_url}" target="_blank" rel="noopener"><img src="${m.image_url}" class="max-w-[240px] max-h-[180px] rounded-xl object-cover border border-slate-200 shadow-xs hover:opacity-90 transition-opacity" /></a></div>`
+        : '';
+
+      div.className = 'flex items-end justify-start gap-2.5 message-item';
+      div.innerHTML = `
+        <div class="flex-shrink-0">
+          ${avatarHtml}
+        </div>
+        <div class="flex flex-col items-start max-w-[80%]">
+          <span class="text-[10px] font-semibold text-slate-400 mb-1 px-1">
+            ${escapeHtml(m.sender)} &bull; ${m.created_at}
+          </span>
+          <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm break-words whitespace-pre-line">
+            ${escapeHtml(m.content)}
+            ${imageHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    const closedBanner = document.getElementById('closedBanner');
+    if (closedBanner) {
+      box.insertBefore(div, closedBanner);
+    } else {
+      box.appendChild(div);
+    }
+  }
+
+  // Send message via AJAX
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const content = input.value.trim();
+      const hasImage = imageInput && imageInput.files && imageInput.files.length > 0;
+
+      if (!content && !hasImage) return;
+
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const formData = new FormData();
+      formData.append('content', content);
+      formData.append('csrfmiddlewaretoken', csrf);
+      if (hasImage) {
+        formData.append('image', imageInput.files[0]);
+      }
+
+      // Reset input fields
+      input.value = '';
+      if (imageInput) imageInput.value = '';
+      if (previewBar) {
+        previewBar.classList.add('hidden');
+        previewBar.classList.remove('flex');
+      }
+      input.setAttribute('required', 'required');
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `<span>Sending...</span>`;
+
+      try {
+        const res = await fetch(`/chat/${convoId}/send/`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<span>Send</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(m => renderMessageHtml(m));
+            scrollToBottom();
+          }
+          if (data.convo_status && data.convo_status !== currentConvoStatus) {
+            // Status progressed to PENDING_FINDER or ACTIVE -> reload page to update Action Cards & headers
+            window.location.reload();
+          }
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Failed to send message.');
+        }
+      } catch (err) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<span>Send</span>`;
+        console.error('Send error:', err);
+      }
+    });
+  }
+
+  // Auto-poll every 3 seconds
+  setInterval(async function() {
+    const since = getLatestId();
+    try {
+      const res = await fetch(`/chat/${convoId}/poll/?since=${since}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          data.messages.forEach(m => renderMessageHtml(m));
+          scrollToBottom();
+        }
+
+        // If convo status changed externally (e.g. finder confirmed or claimant finished)
+        if (data.convo_status && data.convo_status !== currentConvoStatus) {
+          window.location.reload();
+        }
+      }
+    } catch (e) {}
+  }, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Close Report | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-16 text-center">
+  <div class="p-8 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+    <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl mx-auto">
+      ⚠️
+    </div>
+    <h1 class="text-xl font-bold text-slate-900">Close Item Report?</h1>
+    <p class="text-sm text-slate-500">
+      Are you sure you want to mark <strong>"{{ item.title }}"</strong> as closed? It will be removed from active public search and matching.
+    </p>
+    
+    <form method="post" class="flex gap-3 justify-center pt-2">
+      {% csrf_token %}
+      <a href="{% url 'items:item_detail' item.id %}" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">
+        Cancel
+      </a>
+      <button type="submit" class="px-4 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm">
+        Yes, Close Report
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Claim #{{ claim.id }} Review | Lost & Found{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 30px; padding-bottom: 50px;">
+
+  <!-- Breadcrumb -->
+  <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--gray-500);">
+    <a href="{% url 'accounts:profile' %}">← Back to Dashboard</a> /
+    <a href="{% url 'items:item_detail' item.id %}">{{ item.title }}</a> /
+    <span style="color: var(--gray-800); font-weight: 600;">Claim #{{ claim.id }}</span>
+  </div>
+
+  <div class="grid grid-cols-2" style="align-items: start; gap: 32px;">
+
+    <!-- Left Column: AI Score & Verification Report -->
+    <div>
+      
+      <!-- AI Evaluation Card -->
+      <div class="card" style="border: 2px solid {% if ai_analysis.match_score >= 70 %}#10b981{% elif ai_analysis.match_score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.5rem;">🤖</span>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--dark);">AI Ownership Verification Score</h2>
+          </div>
+          <span class="badge {% if ai_analysis.confidence_level == 'HIGH' %}badge-found{% elif ai_analysis.confidence_level == 'MODERATE' %}badge-pending{% else %}badge-lost{% endif %}">
+            {{ ai_analysis.get_confidence_level_display }}
+          </span>
+        </div>
+
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+          <span style="font-size: 3rem; font-weight: 900; color: {% if ai_analysis.match_score >= 70 %}var(--success){% elif ai_analysis.match_score >= 40 %}var(--warning){% else %}var(--danger){% endif %};">
+            {{ ai_analysis.match_score }}%
+          </span>
+          <span style="font-size: 1rem; color: var(--gray-500); font-weight: 600;">
+            Confidence Match
+          </span>
+        </div>
+
+        <p style="font-size: 0.95rem; color: var(--gray-700); line-height: 1.5; margin-bottom: 20px;">
+          {{ ai_analysis.reasoning_summary }}
+        </p>
+
+        <!-- Matched Clues -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; font-size: 0.85rem; color: var(--success-text); text-transform: uppercase; margin-bottom: 6px;">
+            ✓ Matched Clues & Indicators
+          </div>
+          <div style="background: var(--success-light); border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 12px; font-size: 0.9rem; color: var(--success-text); white-space: pre-line;">
+            {{ ai_analysis.matching_points|default:"No direct matching clues detected." }}
+          </div>
+        </div>
+
+        <!-- Discrepancies -->
+        <div>
+          <div style="font-weight: 700; font-size: 0.85rem; color: var(--danger-text); text-transform: uppercase; margin-bottom: 6px;">
+            ⚠️ Conflicts, Unverified Details or Risks
+          </div>
+          <div style="background: var(--danger-light); border: 1px solid #fecaca; border-radius: var(--radius-sm); padding: 12px; font-size: 0.9rem; color: var(--danger-text); white-space: pre-line;">
+            {{ ai_analysis.discrepancy_points|default:"None reported." }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Safe Handover Status -->
+      {% if claim.is_handover_complete %}
+        <div class="card" style="background: #ecfdf5; border: 2px solid #10b981; text-align: center;">
+          <div style="font-size: 2.5rem; margin-bottom: 8px;">🤝🎉</div>
+          <h3 style="color: #065f46; font-size: 1.25rem; font-weight: 800;">Item Successfully Returned!</h3>
+          <p style="color: #047857; font-size: 0.9rem; margin-top: 4px;">
+            The physical handover was officially verified via OTP confirmation. Both users have earned trust reputation points!
+          </p>
+        </div>
+      {% elif claim.status == 'ACCEPTED' %}
+        {% if is_claimant %}
+          <div class="card" style="background: #eff6ff; border: 2px solid #3b82f6; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🔑</div>
+            <h3 style="color: #1e40af; font-size: 1.2rem; font-weight: 800;">Your Safe Handover OTP</h3>
+            <div style="font-size: 2.5rem; font-weight: 900; letter-spacing: 6px; color: #1d4ed8; margin: 12px 0;">
+              {{ claim.handover_otp }}
+            </div>
+            <p style="color: #1e3a8a; font-size: 0.85rem;">
+              Keep this 6-digit code private until you meet the finder in person. Give it to the finder to verify the handover.
+            </p>
+          </div>
+        {% elif is_finder %}
+          <div class="card" style="border: 2px solid #3b82f6;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #1e40af; margin-bottom: 10px;">
+              🤝 Complete Physical Handover
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 16px;">
+              When meeting the owner, ask them for their <strong>6-digit Handover PIN</strong> to confirm their identity and complete the transaction.
+            </p>
+            <form action="{% url 'claims:verify_handover' claim.id %}" method="post">
+              {% csrf_token %}
+              <div class="form-group">
+                {{ otp_form.handover_otp }}
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">
+                Verify OTP & Mark Returned
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      {% endif %}
+
+    </div>
+
+    <!-- Right Column: Claimant Submission & Finder Actions -->
+    <div>
+
+      <!-- Status Header -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--dark);">Claim Status</h3>
+            <p style="font-size: 0.85rem; color: var(--gray-500);">Submitted on {{ claim.created_at|date:"F d, Y at H:i" }}</p>
+          </div>
+          <span class="badge {% if claim.status == 'ACCEPTED' %}badge-found{% elif claim.status == 'PENDING' %}badge-pending{% else %}badge-lost{% endif %}" style="font-size: 0.85rem; padding: 6px 14px;">
+            {{ claim.get_status_display }}
+          </span>
+        </div>
+
+        <div style="font-size: 0.95rem; margin-bottom: 16px;">
+          <strong>Claimant:</strong> {{ claim.claimant.username }} 
+          {% if claim.claimant.is_email_verified %}
+            <span class="badge badge-verified" style="font-size: 0.7rem;">Verified</span>
+          {% endif %}
+          <span style="color: var(--gray-500); margin-left: 10px;">(Trust Score: {{ claim.claimant.trust_score }}/100)</span>
+        </div>
+
+        <!-- Claimant's Answers to Challenge -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 700; font-size: 0.9rem; color: var(--gray-700); margin-bottom: 6px;">
+            Claimant's Description of Secret Details:
+          </div>
+          <div style="background: var(--gray-50); border: 1px solid var(--gray-300); border-radius: var(--radius-sm); padding: 14px; font-size: 0.95rem; color: var(--gray-800); white-space: pre-line;">
+            {{ claim.claimed_answers }}
+          </div>
+        </div>
+
+        <!-- Proof of Ownership Image -->
+        {% if claim.proof_image %}
+          <div style="margin-bottom: 20px;">
+            <div style="font-weight: 700; font-size: 0.9rem; color: var(--gray-700); margin-bottom: 6px;">
+              Uploaded Proof Document / Photo:
+            </div>
+            <a href="{{ claim.proof_image.url }}" target="_blank">
+              <img src="{{ claim.proof_image.url }}" alt="Proof Document" style="max-height: 220px; border-radius: 8px; border: 1px solid var(--gray-300);">
+            </a>
+            <p style="font-size: 0.75rem; color: var(--gray-500); margin-top: 4px;">Click image to view full size</p>
+          </div>
+        {% endif %}
+
+        {% if claim.additional_notes %}
+          <div style="margin-bottom: 20px;">
+            <div style="font-weight: 700; font-size: 0.9rem; color: var(--gray-700); margin-bottom: 6px;">
+              Additional Notes:
+            </div>
+            <p style="font-size: 0.9rem; color: var(--gray-600); background: var(--gray-100); padding: 10px; border-radius: var(--radius-sm);">
+              {{ claim.additional_notes }}
+            </p>
+          </div>
+        {% endif %}
+
+        <!-- Finder Decision Buttons -->
+        {% if is_finder and claim.status == 'PENDING' %}
+          <div style="border-top: 1px solid var(--gray-200); padding-top: 20px; margin-top: 20px;">
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 12px;">Your Decision as Finder:</h4>
+            
+            <div style="display: flex; gap: 12px;">
+              <form action="{% url 'claims:accept_claim' claim.id %}" method="post" style="flex: 1;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-block" data-confirm="Are you sure you want to accept this claim? The claimant will receive instructions to coordinate safe return.">
+                  ✓ Accept Claim
+                </button>
+              </form>
+
+              <form action="{% url 'claims:reject_claim' claim.id %}" method="post" style="flex: 1;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-block" data-confirm="Are you sure you want to reject this claim? A penalty may be applied to false claimants.">
+                  ✕ Reject Claim
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

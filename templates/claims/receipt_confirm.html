@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Confirm Receipt | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-16 text-center">
+  <div class="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
+    <div class="w-16 h-16 rounded-2xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-3xl mx-auto shadow-inner">
+      📦
+    </div>
+    
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Did You Receive Your Item?</h1>
+      <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+        The finder has marked <strong>"{{ claim.match.found_item.title }}"</strong> as returned to you.
+      </p>
+    </div>
+
+    <!-- Handover OTP prompt -->
+    <div class="p-4 rounded-xl bg-cyan-50 text-left text-xs text-cyan-950 space-y-2 border border-cyan-200">
+      <div class="font-bold">Your Verification Handover Code:</div>
+      <div class="bg-white p-2.5 rounded-lg border border-cyan-200 font-mono text-lg font-black text-cyan-800 tracking-widest text-center">
+        {{ claim.handover_otp }}
+      </div>
+      <p class="text-[11px] text-cyan-800">
+        Show this 6-digit code to the finder during the handover to verify your identity.
+      </p>
+    </div>
+
+    <form method="post" class="space-y-3 pt-2">
+      {% csrf_token %}
+      <button type="submit" name="confirmed" value="yes" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-md transition-colors">
+        Yes, I Received My Item!
+      </button>
+      <button type="submit" name="confirmed" value="no" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">
+        Not Yet / Problem Occurred
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

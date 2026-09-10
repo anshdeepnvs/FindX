@@ -1,0 +1,98 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Users{% endblock %}
+{% block nav_users %}active{% endblock %}
+
+{% block content %}
+<h1 class="panel-title">👥 User Management</h1>
+<p class="panel-subtitle">{{ total }} user{{ total|pluralize }} found</p>
+
+<!-- Filter Bar -->
+<form method="get" class="filter-bar">
+  <input type="text" name="q" value="{{ q }}" placeholder="🔍 Search username, email, name...">
+  <select name="status">
+    <option value="">All Status</option>
+    <option value="verified"   {% if status == "verified" %}selected{% endif %}>✅ Verified</option>
+    <option value="unverified" {% if status == "unverified" %}selected{% endif %}>⏳ Unverified</option>
+  </select>
+  <select name="role">
+    <option value="">All Roles</option>
+    <option value="staff"  {% if role == "staff" %}selected{% endif %}>⭐ Staff</option>
+    <option value="normal" {% if role == "normal" %}selected{% endif %}>👤 Normal</option>
+  </select>
+  <button type="submit" class="btn-panel btn-panel-primary">Filter</button>
+  <a href="{% url 'panel:user_list' %}" class="btn-panel btn-panel-secondary">Clear</a>
+</form>
+
+<div class="panel-section">
+  <table class="panel-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Verified</th>
+        <th>Role</th>
+        <th>Active</th>
+        <th>Trust</th>
+        <th>Items</th>
+        <th>Claims</th>
+        <th>Joined</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td style="color:#94a3b8;font-size:0.8rem;">#{{ u.id }}</td>
+        <td>
+          <a href="{% url 'panel:user_detail' u.id %}" style="font-weight:600;color:#2563eb;">{{ u.username }}</a>
+          {% if u == request.user %}<span class="badge badge-purple" style="margin-left:4px;">You</span>{% endif %}
+        </td>
+        <td style="font-size:0.82rem;">{{ u.email }}</td>
+        <td style="font-size:0.82rem;">{{ u.phone_number|default:"—" }}</td>
+        <td>
+          {% if u.is_email_verified %}
+            <span class="badge badge-green">✓ Yes</span>
+          {% else %}
+            <span class="badge badge-yellow">⏳ No</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_superuser %}<span class="badge badge-purple">🔐 Super</span>
+          {% elif u.is_staff %}<span class="badge badge-blue">⭐ Staff</span>
+          {% else %}<span class="badge badge-gray">👤 User</span>{% endif %}
+        </td>
+        <td>
+          {% if u.is_active %}
+            <span class="badge badge-green">Active</span>
+          {% else %}
+            <span class="badge badge-red">Banned</span>
+          {% endif %}
+        </td>
+        <td>
+          <span style="font-weight:600;{% if u.trust_score >= 80 %}color:#10b981;{% elif u.trust_score >= 50 %}color:#f59e0b;{% else %}color:#ef4444;{% endif %}">
+            {{ u.trust_score }}
+          </span>
+        </td>
+        <td style="text-align:center;">{{ u.item_count }}</td>
+        <td style="text-align:center;">{{ u.claim_count }}</td>
+        <td style="font-size:0.78rem;color:#94a3b8;">{{ u.date_joined|date:"d M Y" }}</td>
+        <td>
+          <a href="{% url 'panel:user_detail' u.id %}" class="btn-panel btn-panel-primary btn-panel-sm">Manage</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="12">
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <p>No users found matching your filters.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Browse Lost &amp; Found Items | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header Banner -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Browse Items</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Explore all verified public reports of lost and found items. Secret identifying marks are never shown publicly.
+    </p>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-8">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+      
+      <!-- Query -->
+      <div class="md:col-span-2">
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Keywords</label>
+        <div class="relative">
+          <input type="text" name="q" value="{{ q }}" placeholder="e.g. iPhone, Wildcraft bag, silver watch..." class="findx-input pl-9" />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+      </div>
+
+      <!-- Report Type -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Report Type</label>
+        <select name="type" class="findx-input">
+          <option value="">All Types (Lost &amp; Found)</option>
+          <option value="LOST" {% if typ == "LOST" %}selected{% endif %}>🔴 Lost Items</option>
+          <option value="FOUND" {% if typ == "FOUND" %}selected{% endif %}>🟢 Found Items</option>
+        </select>
+      </div>
+
+      <!-- Category -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+        <select name="category" class="findx-input">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}selected{% endif %}>
+              {{ cat.icon }} {{ cat.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Submit button -->
+      <div class="flex items-end gap-2">
+        <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold shadow-sm transition-all">
+          Search
+        </button>
+        <a href="{% url 'items:item_list' %}" class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors" title="Clear filters">
+          Reset
+        </a>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Results Count -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm font-semibold text-slate-700">
+      Showing <span class="text-brand-900 font-bold">{{ total }}</span> listing{{ total|pluralize }}
+    </p>
+    <div class="flex items-center gap-3 text-xs">
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Lost</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Found</span>
+    </div>
+  </div>
+
+  <!-- Items Grid -->
+  {% if items %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {% for item in items %}
+        <div class="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
+          
+          <div>
+            <!-- Image / Placeholder -->
+            <div class="relative aspect-video bg-slate-100 overflow-hidden">
+              {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-gradient-to-tr from-slate-100 to-slate-50">
+                  <span class="text-3xl mb-1">{{ item.category.icon|default:"📦" }}</span>
+                  <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">No Photo Uploaded</span>
+                </div>
+              {% endif %}
+
+              <!-- Item Type Badge -->
+              <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-sm
+                {% if item.item_type == 'LOST' %} bg-rose-500 text-white
+                {% else %} bg-emerald-500 text-white {% endif %}">
+                {{ item.type_label }}
+              </span>
+
+              <!-- Status pill -->
+              <span class="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-slate-800 backdrop-blur shadow-sm">
+                {{ item.get_status_display }}
+              </span>
+            </div>
+
+            <!-- Content -->
+            <div class="p-4">
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <span>{{ item.category.icon|default:"📦" }}</span>
+                <span>{{ item.category.name|default:"General" }}</span>
+                <span>&bull;</span>
+                <span>{{ item.date_event|date:"M d, Y" }}</span>
+              </div>
+
+              <h2 class="text-base font-bold text-slate-900 group-hover:text-brand-900 transition-colors line-clamp-1">
+                {{ item.title }}
+              </h2>
+
+              <p class="text-xs text-slate-500 line-clamp-2 mt-1.5 leading-relaxed">
+                {{ item.description }}
+              </p>
+
+              <!-- Attributes -->
+              <div class="flex items-center gap-2 mt-3 flex-wrap">
+                {% if item.color %}
+                  <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium">
+                    Color: {{ item.color }}
+                  </span>
+                {% endif %}
+                {% if item.brand %}
+                  <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium">
+                    {{ item.brand }}
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+              📍 {{ item.city }}
+            </span>
+            <a href="{% url 'items:item_detail' item.id %}" class="text-xs font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1">
+              View Report &rarr;
+            </a>
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-16 px-4 bg-white rounded-2xl border border-slate-200">
+      <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-4">
+        🔍
+      </div>
+      <h3 class="text-lg font-bold text-slate-800">No Matches Found</h3>
+      <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+        We could not find any items matching your active search query. Try broadening your keywords or clearing the category filter.
+      </p>
+      <div class="mt-6">
+        <a href="{% url 'items:item_list' %}" class="px-4 py-2 text-xs font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+          Clear Filters
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

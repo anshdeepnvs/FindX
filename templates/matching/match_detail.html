@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Match Evaluation #{{ match.id }} | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+  <!-- Back nav -->
+  <div class="flex items-center justify-between">
+    <a href="{% url 'matching:match_list' %}" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800">
+      &larr; Back to all AI Matches
+    </a>
+    <span class="px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800">
+      {{ match.get_status_display }}
+    </span>
+  </div>
+
+  <!-- Overall Match Score Banner -->
+  <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-brand-900 via-brand-800 to-slate-900 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+    <div class="space-y-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-cyan-300 text-xs font-bold">
+        <span>🤖</span> FindX Multi-Vector Match Assessment
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+        {{ match.strength_label.0 }} Correlation ({{ match.final_score|floatformat:0 }}%)
+      </h1>
+      <p class="text-xs text-slate-300 max-w-xl">
+        AI finds potential matches. Ownership verification confirms the real owner. Do not assume correlation alone guarantees identity.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="text-center p-4 rounded-2xl bg-white/10 border border-white/10 backdrop-blur">
+        <div class="text-3xl font-extrabold text-cyan-400 leading-none">{{ match.final_score|floatformat:1 }}%</div>
+        <div class="text-[10px] uppercase font-bold text-slate-300 mt-1">Final Score</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Component Scores Breakdown -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">Correlation Factors Breakdown</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+      
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Text Semantic</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.text_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 30%</div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Image Vector</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.image_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 35%</div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Category</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.category_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 10%</div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Color Profile</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.color_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 10%</div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Location</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.location_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 10%</div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <div class="text-[11px] font-semibold text-slate-500">Date Proximity</div>
+        <div class="text-lg font-bold text-slate-900 mt-1">{{ match.date_score|floatformat:2 }}</div>
+        <div class="text-[10px] text-slate-400">Weight: 5%</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Side-by-side Items Comparison -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    
+    <!-- Lost Item -->
+    <div class="rounded-2xl bg-white border-2 border-rose-200 overflow-hidden shadow-sm flex flex-col justify-between">
+      <div>
+        <div class="p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
+          <span class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🔴</span> Lost Item Report
+          </span>
+          <span class="text-xs font-semibold text-rose-700">Reporter: {{ match.lost_item.reporter.username }}</span>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div class="aspect-video bg-slate-100 rounded-xl overflow-hidden">
+            {% if match.lost_item.image %}
+              <img src="{{ match.lost_item.image.url }}" alt="{{ match.lost_item.title }}" class="w-full h-full object-cover" />
+            {% else %}
+              <div class="w-full h-full flex items-center justify-center text-slate-400 text-sm">No Photo Uploaded</div>
+            {% endif %}
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-900">{{ match.lost_item.title }}</h3>
+          <p class="text-xs text-slate-600 line-clamp-3">{{ match.lost_item.description }}</p>
+
+          <div class="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-slate-100">
+            <div><span class="text-slate-400">City:</span> <strong class="text-slate-700">{{ match.lost_item.city }}</strong></div>
+            <div><span class="text-slate-400">Date:</span> <strong class="text-slate-700">{{ match.lost_item.date_event|date:"M d, Y" }}</strong></div>
+            <div><span class="text-slate-400">Brand:</span> <strong class="text-slate-700">{{ match.lost_item.brand|default:"—" }}</strong></div>
+            <div><span class="text-slate-400">Color:</span> <strong class="text-slate-700">{{ match.lost_item.color|default:"—" }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
+        <a href="{% url 'items:item_detail' match.lost_item.id %}" class="text-xs font-bold text-brand-600 hover:underline">
+          View Full Lost Report &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Found Item -->
+    <div class="rounded-2xl bg-white border-2 border-emerald-200 overflow-hidden shadow-sm flex flex-col justify-between">
+      <div>
+        <div class="p-4 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🟢</span> Found Item Report
+          </span>
+          <span class="text-xs font-semibold text-emerald-700">Finder: {{ match.found_item.reporter.username }}</span>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div class="aspect-video bg-slate-100 rounded-xl overflow-hidden">
+            {% if match.found_item.image %}
+              <img src="{{ match.found_item.image.url }}" alt="{{ match.found_item.title }}" class="w-full h-full object-cover" />
+            {% else %}
+              <div class="w-full h-full flex items-center justify-center text-slate-400 text-sm">No Photo Uploaded</div>
+            {% endif %}
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-900">{{ match.found_item.title }}</h3>
+          <p class="text-xs text-slate-600 line-clamp-3">{{ match.found_item.description }}</p>
+
+          <div class="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-slate-100">
+            <div><span class="text-slate-400">City:</span> <strong class="text-slate-700">{{ match.found_item.city }}</strong></div>
+            <div><span class="text-slate-400">Date:</span> <strong class="text-slate-700">{{ match.found_item.date_event|date:"M d, Y" }}</strong></div>
+            <div><span class="text-slate-400">Brand:</span> <strong class="text-slate-700">{{ match.found_item.brand|default:"—" }}</strong></div>
+            <div><span class="text-slate-400">Color:</span> <strong class="text-slate-700">{{ match.found_item.color|default:"—" }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
+        <a href="{% url 'items:item_detail' match.found_item.id %}" class="text-xs font-bold text-brand-600 hover:underline">
+          View Full Found Report &rarr;
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Primary Action & Claim Status Section -->
+  <div class="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm text-center space-y-4">
+    
+    {% if is_lost_reporter %}
+      <!-- Lost user view -->
+      {% if not claim %}
+        <h3 class="text-xl font-bold text-slate-900">Does this found item look like yours?</h3>
+        <p class="text-sm text-slate-500 max-w-lg mx-auto">
+          Submit an ownership claim and answer the private verification challenge to prove ownership to the finder.
+        </p>
+        <div class="pt-2">
+          <a href="{% url 'claims:submit_claim' match.id %}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-900 to-cyan-800 hover:from-brand-800 hover:to-cyan-700 text-white font-bold text-sm shadow-md transition-all">
+            <span>🛡️</span> Submit Ownership Claim
+          </a>
+        </div>
+      {% else %}
+        <div class="p-4 rounded-xl bg-slate-50 max-w-md mx-auto">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Your Claim Status</div>
+          <div class="text-base font-extrabold text-slate-900 mt-1">{{ claim.get_status_display }}</div>
+          {% if claim.status == 'ACCEPTED' %}
+            <div class="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+              {% if conversation %}
+                <a href="{% url 'chat:conversation_detail' conversation.id %}" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold">
+                  💬 Open Secure Chat
+                </a>
+              {% endif %}
+              <a href="{% url 'claims:receipt_confirm' claim.id %}" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+                Confirm Return / Receipt
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    {% elif is_found_reporter %}
+      <!-- Finder view -->
+      <h3 class="text-xl font-bold text-slate-900">You reported the found item</h3>
+      {% if claim %}
+        <p class="text-sm text-slate-500">The lost item owner has submitted an ownership claim.</p>
+        <div class="pt-2 flex justify-center gap-3">
+          <a href="{% url 'claims:review_claim' claim.id %}" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow">
+            Review Ownership Claim &rarr;
+          </a>
+          {% if conversation and claim.status == 'ACCEPTED' %}
+            <a href="{% url 'chat:conversation_detail' conversation.id %}" class="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow">
+              💬 Open Chat
+            </a>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="text-xs text-slate-400">Waiting for the lost item owner to review this potential match and file a claim.</p>
+      {% endif %}
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

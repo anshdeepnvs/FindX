@@ -1,0 +1,133 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Categories{% endblock %}
+{% block nav_categories %}active{% endblock %}
+
+{% block content %}
+<h1 class="panel-title">🏷️ Category Management</h1>
+<p class="panel-subtitle">{{ categories.count }} categor{{ categories.count|pluralize:"y,ies" }} total</p>
+
+<!-- Add Category Form -->
+<div class="action-box" style="margin-bottom:24px;">
+  <h4>➕ Add New Category</h4>
+  <form method="post" action="{% url 'panel:category_add' %}">
+    {% csrf_token %}
+    <div class="inline-form">
+      <div class="form-group">
+        <label>Icon (emoji)</label>
+        <input type="text" name="icon" value="📦" maxlength="5" class="emoji-input" placeholder="📦">
+      </div>
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" name="name" required placeholder="e.g. Electronics" style="width:220px;">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" name="description" placeholder="Short description..." style="width:280px;">
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn-panel btn-panel-success">➕ Add Category</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Category Table -->
+<div class="panel-section">
+  <table class="panel-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Icon</th>
+        <th>Name</th>
+        <th>Slug</th>
+        <th>Description</th>
+        <th>Items</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in categories %}
+      <tr id="cat-row-{{ cat.id }}">
+        <td style="color:#94a3b8;font-size:0.8rem;">#{{ cat.id }}</td>
+        <td style="font-size:1.4rem;text-align:center;">{{ cat.icon }}</td>
+        <td>
+          <!-- View mode -->
+          <span class="cat-view-{{ cat.id }}" style="font-weight:600;">{{ cat.name }}</span>
+          <!-- Edit mode (hidden) -->
+          <span class="cat-edit-{{ cat.id }}" style="display:none;">
+            <input type="text" id="edit-icon-{{ cat.id }}" value="{{ cat.icon }}"
+              style="width:50px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:5px;font-size:1.1rem;text-align:center;">
+            <input type="text" id="edit-name-{{ cat.id }}" value="{{ cat.name }}"
+              style="width:160px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:0.875rem;margin-left:4px;">
+          </span>
+        </td>
+        <td style="color:#94a3b8;font-size:0.8rem;">{{ cat.slug }}</td>
+        <td>
+          <span class="cat-view-{{ cat.id }}" style="font-size:0.85rem;color:#64748b;">{{ cat.description|default:"—" }}</span>
+          <span class="cat-edit-{{ cat.id }}" style="display:none;">
+            <input type="text" id="edit-desc-{{ cat.id }}" value="{{ cat.description }}"
+              style="width:200px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:0.85rem;">
+          </span>
+        </td>
+        <td style="text-align:center;">
+          <a href="{% url 'panel:item_list' %}?category={{ cat.slug }}" style="font-weight:600;">{{ cat.item_count }}</a>
+        </td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <!-- Edit toggle button -->
+          <button class="btn-panel btn-panel-secondary btn-panel-sm cat-view-{{ cat.id }}"
+            onclick="startEdit({{ cat.id }})">✏️ Edit</button>
+
+          <!-- Save button (hidden) -->
+          <form method="post" action="{% url 'panel:category_edit' cat.id %}" id="edit-form-{{ cat.id }}">
+            {% csrf_token %}
+            <input type="hidden" name="icon" id="save-icon-{{ cat.id }}">
+            <input type="hidden" name="name" id="save-name-{{ cat.id }}">
+            <input type="hidden" name="description" id="save-desc-{{ cat.id }}">
+            <button type="submit" class="btn-panel btn-panel-success btn-panel-sm cat-edit-{{ cat.id }}"
+              style="display:none;" onclick="prepareEdit({{ cat.id }})">💾 Save</button>
+          </form>
+
+          <button class="btn-panel btn-panel-warning btn-panel-sm cat-edit-{{ cat.id }}"
+            style="display:none;" onclick="cancelEdit({{ cat.id }})">Cancel</button>
+
+          <!-- Delete -->
+          <button class="btn-panel btn-panel-danger btn-panel-sm cat-view-{{ cat.id }}"
+            onclick="confirmAction('Delete Category',
+              'Delete category &quot;{{ cat.name }}&quot;? Items in this category will have their category set to None.',
+              '{% url 'panel:category_delete' cat.id %}',
+              '🗑️ Delete', 'btn-panel-danger')">
+            🗑️
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7">
+          <div class="empty-state">
+            <div class="empty-icon">🏷️</div>
+            <p>No categories yet. Add one above.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function startEdit(id) {
+    document.querySelectorAll('.cat-view-' + id).forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.cat-edit-' + id).forEach(el => el.style.display = 'inline');
+  }
+  function cancelEdit(id) {
+    document.querySelectorAll('.cat-edit-' + id).forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.cat-view-' + id).forEach(el => el.style.display = 'inline');
+  }
+  function prepareEdit(id) {
+    document.getElementById('save-icon-' + id).value = document.getElementById('edit-icon-' + id).value;
+    document.getElementById('save-name-' + id).value = document.getElementById('edit-name-' + id).value;
+    document.getElementById('save-desc-' + id).value = document.getElementById('edit-desc-' + id).value;
+  }
+</script>
+{% endblock %}

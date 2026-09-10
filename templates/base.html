@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FindX | Lost Today. Found Tomorrow.{% endblock %}</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#0f172a', // Deep Navy
+            },
+            accent: {
+              teal: '#0d9488',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              coral: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .findx-input, .form-control {
+      width: 100%;
+      border-radius: 0.75rem;
+      border: 1.5px solid #cbd5e1;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #0f172a;
+      background-color: #ffffff;
+      outline: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: all 0.18s ease-in-out;
+    }
+    .findx-input::placeholder, .form-control::placeholder {
+      color: #94a3b8;
+    }
+    .findx-input:hover, .form-control:hover {
+      border-color: #94a3b8;
+    }
+    .findx-input:focus, .form-control:focus {
+      border-color: #0284c7;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    @keyframes toastSlideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes toastSlideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to   { transform: translateX(120%); opacity: 0; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="flex flex-col min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200/80 shadow-sm transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-8">
+          <a href="{% if user.is_authenticated %}{% url 'core:dashboard' %}{% else %}{% url 'core:home' %}{% endif %}" class="flex items-center gap-2.5 group">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-900 via-brand-800 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-brand-900/10 group-hover:scale-105 transition-transform">
+              <svg class="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-xl font-extrabold tracking-tight text-brand-900 leading-none">
+                Find<span class="text-cyan-500">X</span>
+              </span>
+              <span class="text-[10px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">Lost & Found AI</span>
+            </div>
+          </a>
+
+          <!-- Primary Nav Links -->
+          <nav class="hidden md:flex items-center gap-1">
+            <a href="{% url 'items:item_list' %}" class="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-brand-900 hover:bg-slate-100/80 transition-colors">
+              Browse Items
+            </a>
+            {% if user.is_authenticated %}
+              <a href="{% url 'core:dashboard' %}" class="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-brand-900 hover:bg-slate-100/80 transition-colors">
+                Dashboard
+              </a>
+              <a href="{% url 'matching:match_list' %}" class="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-brand-900 hover:bg-slate-100/80 transition-colors flex items-center gap-1.5">
+                <span>AI Matches</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-cyan-100 text-cyan-800">AI</span>
+              </a>
+              <a href="{% url 'chat:conversation_list' %}" class="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-brand-900 hover:bg-slate-100/80 transition-colors">
+                Messages
+              </a>
+            {% endif %}
+          </nav>
+        </div>
+
+        <!-- Right CTA / User controls -->
+        <div class="flex items-center gap-3">
+          <!-- Quick Report Buttons -->
+          <a href="{% url 'items:report_lost' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            Report Lost
+          </a>
+          <a href="{% url 'items:report_found' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-colors">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Post Found
+          </a>
+
+          {% if user.is_authenticated %}
+            <!-- Notification Bell -->
+            <a href="{% url 'notifications:list' %}" class="relative p-2 rounded-lg text-slate-500 hover:text-brand-900 hover:bg-slate-100 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              {% if unread_notifications_count > 0 %}
+                <span class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow">
+                  {{ unread_notifications_count }}
+                </span>
+              {% endif %}
+            </a>
+
+            <!-- User Menu Pill -->
+            <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+              {% if user.is_staff %}
+                <a href="{% url 'panel:dashboard' %}" class="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md bg-amber-500/10 text-amber-700 border border-amber-500/20 hover:bg-amber-500/20 transition-colors">
+                  ⚙️ Staff
+                </a>
+              {% endif %}
+              <a href="{% url 'accounts:profile' %}" class="flex items-center gap-2 p-1 pl-2.5 rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition-all text-xs font-semibold text-slate-700">
+                <span>{{ user.username }}</span>
+                {% if user.avatar %}
+                  <img src="{{ user.avatar.url }}" alt="{{ user.username }}" class="w-7 h-7 rounded-full object-cover shadow-inner border border-slate-200" />
+                {% else %}
+                  <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-600 text-white flex items-center justify-center text-xs font-bold uppercase shadow-inner">
+                    {{ user.username|slice:":1" }}
+                  </div>
+                {% endif %}
+              </a>
+              <form action="{% url 'accounts:logout' %}" method="post" class="inline">
+                {% csrf_token %}
+                <button type="submit" title="Logout" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          {% else %}
+            <!-- Guest buttons -->
+            <div class="flex items-center gap-2">
+              <a href="{% url 'accounts:login' %}" class="px-3.5 py-2 text-sm font-medium text-slate-700 hover:text-brand-900 transition-colors">
+                Log in
+              </a>
+              <a href="{% url 'accounts:register' %}" class="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-900 text-white hover:bg-brand-800 shadow-sm shadow-brand-900/10 transition-all">
+                Sign Up
+              </a>
+            </div>
+          {% endif %}
+
+          <!-- Mobile menu button -->
+          <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Toggle menu">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Dropdown Navigation -->
+      <div id="mobileMenu" class="hidden md:hidden border-t border-slate-100 py-3 space-y-1">
+        <a href="{% url 'items:item_list' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100">Browse Items</a>
+        <a href="{% url 'items:report_lost' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-rose-700 hover:bg-rose-50">Report Lost Item</a>
+        <a href="{% url 'items:report_found' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-emerald-700 hover:bg-emerald-50">Post Found Item</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'core:dashboard' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100">Dashboard</a>
+          <a href="{% url 'matching:match_list' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100">AI Matches</a>
+          <a href="{% url 'chat:conversation_list' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100">Messages</a>
+          <a href="{% url 'accounts:profile' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100">Profile</a>
+          {% if user.is_staff %}
+            <a href="{% url 'panel:dashboard' %}" class="block px-3 py-2 text-sm font-medium rounded-lg text-amber-700 hover:bg-amber-50">Admin Panel</a>
+          {% endif %}
+        {% endif %}
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Floating Flash Messages Toast Container (Top-Right, 5s auto-dismiss) -->
+  {% if messages %}
+    <div id="toastContainer" class="fixed top-20 right-4 sm:right-6 z-[9999] flex flex-col gap-3 max-w-sm sm:max-w-md w-full pointer-events-none">
+      {% for message in messages %}
+        <div class="toast-item pointer-events-auto flex flex-col rounded-2xl border shadow-xl backdrop-blur-md transition-all duration-400 ease-out overflow-hidden
+          {% if message.tags == 'success' %} bg-white/95 border-emerald-300 text-emerald-950 shadow-emerald-950/10
+          {% elif message.tags == 'error' %} bg-white/95 border-rose-300 text-rose-950 shadow-rose-950/10
+          {% elif message.tags == 'warning' %} bg-white/95 border-amber-300 text-amber-950 shadow-amber-950/10
+          {% else %} bg-white/95 border-cyan-300 text-slate-900 shadow-cyan-950/10 {% endif %}"
+          style="animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+          
+          <div class="flex items-start justify-between gap-3 p-4">
+            <div class="flex items-start gap-3">
+              <span class="text-2xl flex-shrink-0 p-1 rounded-xl
+                {% if message.tags == 'success' %} bg-emerald-100 text-emerald-600
+                {% elif message.tags == 'error' %} bg-rose-100 text-rose-600
+                {% elif message.tags == 'warning' %} bg-amber-100 text-amber-600
+                {% else %} bg-cyan-100 text-cyan-600 {% endif %}">
+                {% if message.tags == 'success' %}✅
+                {% elif message.tags == 'error' %}⛔
+                {% elif message.tags == 'warning' %}⚠️
+                {% else %}ℹ️{% endif %}
+              </span>
+              <div class="pt-0.5">
+                <p class="text-xs font-bold uppercase tracking-wider
+                  {% if message.tags == 'success' %} text-emerald-700
+                  {% elif message.tags == 'error' %} text-rose-700
+                  {% elif message.tags == 'warning' %} text-amber-700
+                  {% else %} text-cyan-700 {% endif %}">
+                  {% if message.tags == 'success' %}Success
+                  {% elif message.tags == 'error' %}Attention
+                  {% elif message.tags == 'warning' %}Notice
+                  {% else %}Notification{% endif %}
+                </p>
+                <p class="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed">{{ message }}</p>
+              </div>
+            </div>
+            <button onclick="dismissToast(this.closest('.toast-item'))" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0" aria-label="Dismiss">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- 5-second countdown progress indicator -->
+          <div class="w-full h-1 bg-slate-100 overflow-hidden">
+            <div class="h-full toast-progress
+              {% if message.tags == 'success' %} bg-emerald-500
+              {% elif message.tags == 'error' %} bg-rose-500
+              {% elif message.tags == 'warning' %} bg-amber-500
+              {% else %} bg-cyan-500 {% endif %}"
+              style="width: 100%; transition: width 5000ms linear;"></div>
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main Content Area -->
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-brand-900 text-slate-300 border-t border-slate-800 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        
+        <div class="md:col-span-2 space-y-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-brand-500 flex items-center justify-center text-white">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+            <span class="text-xl font-extrabold text-white tracking-tight">Find<span class="text-cyan-400">X</span></span>
+          </div>
+          <p class="text-sm text-slate-400 max-w-sm leading-relaxed">
+            "Lost Today. Found Tomorrow." — FindX connects lost belongings with their owners through vision embeddings, semantic analysis, and anti-scam blind ownership verification.
+          </p>
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            AI Matching Engine Active
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-3">Quick Navigation</h3>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li><a href="{% url 'items:item_list' %}" class="hover:text-cyan-400 transition-colors">Browse Public Listings</a></li>
+            <li><a href="{% url 'items:report_lost' %}" class="hover:text-cyan-400 transition-colors">Report a Lost Item</a></li>
+            <li><a href="{% url 'items:report_found' %}" class="hover:text-cyan-400 transition-colors">Post a Found Item</a></li>
+            <li><a href="{% url 'accounts:login' %}" class="hover:text-cyan-400 transition-colors">User Login</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-3">Trust &amp; Security</h3>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li><span class="text-slate-300">🛡️ Blind Verification</span></li>
+            <li><span class="text-slate-300">🔒 Zero Contact Leak</span></li>
+            <li><span class="text-slate-300">💬 Escrow Chat Protection</span></li>
+            <li><span class="text-slate-300">🔑 Physical Handover OTP</span></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="border-t border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+        <p>&copy; 2026 FindX Intelligent Recovery Systems. All rights reserved.</p>
+        <p>Built with Python Django &bull; Sentence Transformers &bull; Tailwind CSS</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile navigation drawer toggle
+    const btn = document.getElementById('mobileMenuBtn');
+    const menu = document.getElementById('mobileMenu');
+    if (btn && menu) {
+      btn.addEventListener('click', () => {
+        menu.classList.toggle('hidden');
+      });
+    }
+
+    // Dismiss floating notification toast
+    function dismissToast(toast) {
+      if (!toast) return;
+      toast.style.animation = 'toastSlideOut 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+      setTimeout(() => {
+        toast.remove();
+        const container = document.getElementById('toastContainer');
+        if (container && container.children.length === 0) {
+          container.remove();
+        }
+      }, 350);
+    }
+
+    // Automatically trigger 5-second countdown & slide-out
+    document.addEventListener('DOMContentLoaded', () => {
+      const toasts = document.querySelectorAll('.toast-item');
+      if (toasts.length > 0) {
+        // Trigger countdown progress bar shrink
+        setTimeout(() => {
+          document.querySelectorAll('.toast-progress').forEach(bar => {
+            bar.style.width = '0%';
+          });
+        }, 50);
+
+        // Slide out and remove each toast after 5 seconds (5000 ms)
+        toasts.forEach((toast, idx) => {
+          setTimeout(() => {
+            dismissToast(toast);
+          }, 5000 + (idx * 200));
+        });
+      }
+    });
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,163 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}Claim #{{ claim.id }}{% endblock %}
+{% block nav_claims %}active{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;">
+  <a href="{% url 'panel:claim_list' %}" style="color:#64748b;font-size:0.85rem;">← Claims</a>
+  <span style="color:#cbd5e1;">/</span>
+  <h1 class="panel-title" style="margin:0;">Claim #{{ claim.id }}</h1>
+  {% if claim.status == "PENDING" %}<span class="badge badge-yellow">⏳ Pending</span>
+  {% elif claim.status == "ACCEPTED" %}<span class="badge badge-green">✅ Accepted</span>
+  {% elif claim.status == "REJECTED" %}<span class="badge badge-red">❌ Rejected</span>
+  {% else %}<span class="badge badge-gray">🚫 Cancelled</span>{% endif %}
+</div>
+<p class="panel-subtitle">Filed {{ claim.created_at|date:"d M Y, H:i" }}</p>
+
+<!-- Change Status -->
+<div class="action-box" style="margin-bottom:20px;">
+  <h4>🔄 Change Claim Status</h4>
+  <form method="post" action="{% url 'panel:claim_change_status' claim.id %}" class="action-row">
+    {% csrf_token %}
+    <select name="status" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:7px;font-size:0.875rem;">
+      <option value="PENDING"   {% if claim.status == "PENDING" %}selected{% endif %}>⏳ Pending Review</option>
+      <option value="ACCEPTED"  {% if claim.status == "ACCEPTED" %}selected{% endif %}>✅ Accepted</option>
+      <option value="REJECTED"  {% if claim.status == "REJECTED" %}selected{% endif %}>❌ Rejected</option>
+      <option value="CANCELLED" {% if claim.status == "CANCELLED" %}selected{% endif %}>🚫 Cancelled</option>
+    </select>
+    <button type="submit" class="btn-panel btn-panel-primary">Update Status</button>
+  </form>
+</div>
+
+<div class="detail-grid">
+  <!-- Claim Info -->
+  <div class="detail-card">
+    <h4>📋 Claim Details</h4>
+    <div class="detail-row"><span class="key">Claim ID</span><span class="val">#{{ claim.id }}</span></div>
+    <div class="detail-row">
+      <span class="key">Claimant</span>
+      <span class="val"><a href="{% url 'panel:user_detail' claim.claimant.id %}">{{ claim.claimant.username }}</a></span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Item</span>
+      <span class="val"><a href="{% url 'panel:item_detail' claim.item.id %}">{{ claim.item.title|truncatechars:40 }}</a></span>
+    </div>
+    <div class="detail-row"><span class="key">Item Reporter</span>
+      <span class="val"><a href="{% url 'panel:user_detail' claim.item.reporter.id %}">{{ claim.item.reporter.username }}</a></span>
+    </div>
+    <div class="detail-row"><span class="key">Filed On</span><span class="val">{{ claim.created_at|date:"d M Y, H:i" }}</span></div>
+    <div class="detail-row"><span class="key">Last Updated</span><span class="val">{{ claim.updated_at|date:"d M Y, H:i" }}</span></div>
+    <div class="detail-row">
+      <span class="key">Handover OTP</span>
+      <span class="val"><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ claim.handover_otp }}</code></span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Handover Complete</span>
+      <span class="val">{% if claim.is_handover_complete %}<span class="badge badge-green">✓ Yes</span>{% else %}<span class="badge badge-gray">No</span>{% endif %}</span>
+    </div>
+  </div>
+
+  <!-- AI Analysis -->
+  <div class="detail-card">
+    <h4>🤖 AI Analysis Result</h4>
+    {% if ai %}
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:0.82rem;color:#64748b;">Match Score</span>
+          <span style="font-size:1.5rem;font-weight:700;{% if ai.match_score >= 70 %}color:#10b981;{% elif ai.match_score >= 40 %}color:#f59e0b;{% else %}color:#ef4444;{% endif %}">
+            {{ ai.match_score|floatformat:1 }}%
+          </span>
+        </div>
+        <div class="score-bar" style="height:12px;border-radius:6px;">
+          <div class="score-bar-fill" style="width:{{ ai.match_score }}%;height:100%;border-radius:6px;
+            background:{% if ai.match_score >= 70 %}#10b981{% elif ai.match_score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">
+          </div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <span class="key">Confidence</span>
+        <span class="val">
+          {% if ai.confidence_level == "HIGH" %}<span class="badge badge-green">High Match</span>
+          {% elif ai.confidence_level == "MODERATE" %}<span class="badge badge-yellow">Moderate</span>
+          {% elif ai.confidence_level == "LOW" %}<span class="badge badge-orange">Low Match</span>
+          {% else %}<span class="badge badge-red">🚨 Fraud Alert</span>{% endif %}
+        </span>
+      </div>
+      <div style="margin-top:12px;">
+        <p style="font-size:0.75rem;color:#64748b;font-weight:600;margin-bottom:4px;">AI Reasoning:</p>
+        <p style="font-size:0.85rem;color:#334155;line-height:1.6;">{{ ai.reasoning_summary }}</p>
+      </div>
+      {% if ai.matching_points %}
+      <div style="margin-top:10px;">
+        <p style="font-size:0.75rem;color:#10b981;font-weight:600;margin-bottom:4px;">✅ Matching Points:</p>
+        <p style="font-size:0.83rem;color:#065f46;">{{ ai.matching_points }}</p>
+      </div>
+      {% endif %}
+      {% if ai.discrepancy_points %}
+      <div style="margin-top:10px;">
+        <p style="font-size:0.75rem;color:#ef4444;font-weight:600;margin-bottom:4px;">❌ Discrepancies:</p>
+        <p style="font-size:0.83rem;color:#991b1b;">{{ ai.discrepancy_points }}</p>
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="empty-state" style="padding:24px 0;">
+        <div class="empty-icon">🤖</div>
+        <p>No AI analysis available for this claim.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Claimant's Answer -->
+<div class="detail-card" style="margin-bottom:20px;">
+  <h4>💬 Claimant's Challenge Answer</h4>
+  <p style="font-size:0.82rem;color:#64748b;margin-bottom:8px;">Question asked: <em>{{ claim.item.challenge_question }}</em></p>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+    <p style="font-size:0.9rem;color:#334155;line-height:1.7;">{{ claim.claimed_answers }}</p>
+  </div>
+</div>
+
+{% if claim.additional_notes %}
+<div class="detail-card" style="margin-bottom:20px;">
+  <h4>📝 Additional Notes from Claimant</h4>
+  <p style="font-size:0.9rem;color:#334155;line-height:1.7;">{{ claim.additional_notes }}</p>
+</div>
+{% endif %}
+
+{% if claim.proof_image %}
+<div class="detail-card" style="margin-bottom:20px;">
+  <h4>🖼️ Proof Image Uploaded by Claimant</h4>
+  <img src="{{ claim.proof_image.url }}" alt="Proof image" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;">
+</div>
+{% endif %}
+
+<!-- Compare: Item private vs claimant answer -->
+<div class="detail-card" style="margin-bottom:20px;border:2px solid #fecaca;">
+  <h4>🔍 Admin Comparison — Private vs Claimed <span style="color:#ef4444;font-size:0.7rem;">(ADMIN ONLY)</span></h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div>
+      <p style="font-size:0.78rem;color:#64748b;font-weight:600;margin-bottom:6px;">ITEM'S SECRET DETAILS (from reporter):</p>
+      <div class="hidden-detail-box">{{ claim.item.hidden_details|default:"No hidden details on record." }}</div>
+    </div>
+    <div>
+      <p style="font-size:0.78rem;color:#64748b;font-weight:600;margin-bottom:6px;">CLAIMANT'S ANSWER:</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:0.875rem;color:#166534;">
+        {{ claim.claimed_answers }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Danger Zone -->
+<div class="danger-zone">
+  <h5>⚠️ Danger Zone</h5>
+  <p style="font-size:0.85rem;color:#991b1b;margin-bottom:12px;">Permanently delete this claim and its AI analysis.</p>
+  <button class="btn-panel btn-panel-danger"
+    onclick="confirmAction('Delete Claim',
+      'Delete Claim #{{ claim.id }}? This cannot be undone.',
+      '{% url 'panel:claim_delete' claim.id %}',
+      '🗑️ Delete Permanently', 'btn-panel-danger')">
+    🗑️ Delete Claim
+  </button>
+</div>
+{% endblock %}

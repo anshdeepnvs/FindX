@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-6">
+    <a href="{% url 'items:item_list' %}" class="hover:text-slate-600">Browse Items</a>
+    <span>/</span>
+    <span class="text-slate-700">{{ item.title }}</span>
+  </nav>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Left Column: Photo & Core Metadata -->
+    <div class="space-y-6">
+      
+      <!-- Primary Photo Card -->
+      <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="relative aspect-square bg-slate-100">
+          {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover" />
+          {% else %}
+            <div class="w-full h-full flex flex-col items-center justify-center text-slate-400">
+              <span class="text-6xl mb-2">{{ item.category.icon|default:"📦" }}</span>
+              <span class="text-xs font-semibold">No Image Provided</span>
+            </div>
+          {% endif %}
+          
+          <span class="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider shadow
+            {% if item.item_type == 'LOST' %} bg-rose-500 text-white
+            {% else %} bg-emerald-500 text-white {% endif %}">
+            {{ item.type_label }}
+          </span>
+
+          <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-slate-800 shadow backdrop-blur">
+            {{ item.get_status_display }}
+          </span>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Report ID: <strong>#{{ item.id }}</strong></span>
+          <span>Reported: {{ item.created_at|date:"M d, Y" }}</span>
+        </div>
+      </div>
+
+      <!-- Reporter Info Card -->
+      <div class="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Reported By</h3>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-600 text-white flex items-center justify-center font-bold text-sm uppercase">
+            {{ item.reporter.username|slice:":1" }}
+          </div>
+          <div>
+            <div class="text-sm font-bold text-slate-900">{{ item.reporter.get_full_name_or_username }}</div>
+            <div class="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+              {% if item.reporter.is_email_verified %}
+                <span class="text-emerald-600 font-semibold">✓ Verified Account</span>
+              {% else %}
+                <span class="text-amber-600 font-semibold">⚠️ Unverified</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 pt-2 border-t border-slate-100">
+          🔒 Contact details are strictly protected by FindX escrow privacy until ownership verification is approved.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Details & Owner Dashboard Area -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Main Details Card -->
+      <div class="p-6 sm:p-8 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-6">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-semibold text-cyan-600 uppercase tracking-wider mb-2">
+            <span>{{ item.category.icon|default:"📦" }}</span>
+            <span>{{ item.category.name|default:"General Item" }}</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            {{ item.title }}
+          </h1>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Public Description</h3>
+          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-4 rounded-xl border border-slate-100">
+            {{ item.description }}
+          </p>
+        </div>
+
+        <!-- Metadata Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+          
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">Brand / Make</span>
+            <span class="text-sm font-bold text-slate-800">{{ item.brand|default:"Not specified" }}</span>
+          </div>
+
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">Color</span>
+            <span class="text-sm font-bold text-slate-800">{{ item.color|default:"Not specified" }}</span>
+          </div>
+
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">Date of Event</span>
+            <span class="text-sm font-bold text-slate-800">{{ item.date_event|date:"M d, Y" }}</span>
+          </div>
+
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">City</span>
+            <span class="text-sm font-bold text-slate-800">📍 {{ item.city }}</span>
+          </div>
+
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">State / Country</span>
+            <span class="text-sm font-bold text-slate-800">{{ item.state|default:"" }} {{ item.country }}</span>
+          </div>
+
+          <div>
+            <span class="text-xs font-medium text-slate-400 block">Specific Location</span>
+            <span class="text-sm font-bold text-slate-800">{{ item.location_name|default:"Not disclosed" }}</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- OWNER-ONLY SECTION -->
+      {% if is_owner %}
+        
+        <!-- Potential Matches Tab for Owner -->
+        <div class="p-6 rounded-2xl border-2 border-cyan-500/30 bg-gradient-to-tr from-cyan-50/50 to-white shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🤖</span>
+              <div>
+                <h3 class="text-base font-bold text-slate-900">AI Matches for this Item</h3>
+                <p class="text-xs text-slate-500">Cross-referenced against all opposite-type reports.</p>
+              </div>
+            </div>
+            <a href="{% url 'matching:match_list' %}" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">
+              All Matches &rarr;
+            </a>
+          </div>
+
+          {% if matches %}
+            <div class="space-y-3">
+              {% for m in matches %}
+                <div class="flex items-center justify-between p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="px-3 py-1.5 rounded-lg bg-cyan-100 text-cyan-800 font-extrabold text-sm">
+                      {{ m.final_score|floatformat:0 }}%
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-bold text-slate-900">
+                        {% if item.item_type == 'LOST' %}{{ m.found_item.title }}{% else %}{{ m.lost_item.title }}{% endif %}
+                      </h4>
+                      <div class="text-xs text-slate-500">
+                        📍 {% if item.item_type == 'LOST' %}{{ m.found_item.city }}{% else %}{{ m.lost_item.city }}{% endif %} &bull;
+                        {{ m.get_status_display }}
+                      </div>
+                    </div>
+                  </div>
+                  <a href="{% url 'matching:match_detail' m.id %}" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-colors">
+                    Review Match
+                  </a>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-6 text-slate-400 bg-white/60 rounded-xl border border-dashed border-slate-200">
+              <p class="text-xs">No potential matches currently above the 40% threshold.</p>
+              <p class="text-[11px] text-slate-400 mt-1">We will notify you immediately if a new report matches.</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Private Vault for Owner Only -->
+        {% if private %}
+          <div class="p-6 rounded-2xl border border-amber-200 bg-amber-50/60 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 text-amber-900">
+              <span class="text-lg">🔒</span>
+              <h3 class="text-sm font-bold uppercase tracking-wider">Your Private Verification Vault (Secret)</h3>
+            </div>
+            <p class="text-xs text-amber-800">
+              These details are strictly private to your account. They are used to verify claimants and are never exposed on public cards.
+            </p>
+            
+            <div class="space-y-2 text-xs">
+              <div>
+                <span class="font-bold text-slate-700">Verification Challenge Question:</span>
+                <p class="text-slate-600 bg-white p-2.5 rounded-lg border border-amber-200 mt-0.5">{{ private.challenge_question }}</p>
+              </div>
+              <div>
+                <span class="font-bold text-slate-700">Hidden Secret Details:</span>
+                <p class="text-slate-600 bg-white p-2.5 rounded-lg border border-amber-200 mt-0.5">{{ private.hidden_info }}</p>
+              </div>
+              {% if private.serial_hint %}
+                <div>
+                  <span class="font-bold text-slate-700">Serial Hint:</span>
+                  <span class="text-slate-600 ml-1">{{ private.serial_hint }}</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Management Controls for Owner -->
+        <div class="p-4 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-600">Want to close this report?</span>
+          <form action="{% url 'items:item_close' item.id %}" method="post" onsubmit="return confirm('Are you sure you want to mark this item report as closed?');">
+            {% csrf_token %}
+            <button type="submit" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors">
+              Close Report
+            </button>
+          </form>
+        </div>
+
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

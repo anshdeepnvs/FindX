@@ -1,0 +1,233 @@
+{% extends "panel/base_panel.html" %}
+{% block title %}User: {{ target.username }}{% endblock %}
+{% block nav_users %}active{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+  <a href="{% url 'panel:user_list' %}" style="color:#64748b;font-size:0.85rem;">← Users</a>
+  <span style="color:#cbd5e1;">/</span>
+  <h1 class="panel-title" style="margin:0;">{{ target.username }}</h1>
+  {% if target.is_email_verified %}
+    <span class="badge badge-green">✓ Verified</span>
+  {% else %}
+    <span class="badge badge-yellow">⏳ Unverified</span>
+  {% endif %}
+  {% if not target.is_active %}
+    <span class="badge badge-red">🚫 Banned</span>
+  {% endif %}
+  {% if target.is_staff %}
+    <span class="badge badge-blue">⭐ Staff</span>
+  {% endif %}
+</div>
+<p class="panel-subtitle">User ID #{{ target.id }} — Joined {{ target.date_joined|date:"d M Y, H:i" }}</p>
+
+<div class="detail-grid">
+
+  <!-- Basic Info -->
+  <div class="detail-card">
+    <h4>👤 Account Info</h4>
+    <div class="detail-row"><span class="key">Username</span><span class="val">{{ target.username }}</span></div>
+    <div class="detail-row"><span class="key">Email</span><span class="val">{{ target.email }}</span></div>
+    <div class="detail-row"><span class="key">Full Name</span><span class="val">{{ target.get_full_name|default:"—" }}</span></div>
+    <div class="detail-row"><span class="key">Phone</span><span class="val">{{ target.phone_number|default:"—" }}</span></div>
+    <div class="detail-row"><span class="key">Date Joined</span><span class="val">{{ target.date_joined|date:"d M Y, H:i" }}</span></div>
+    <div class="detail-row"><span class="key">Last Login</span><span class="val">{{ target.last_login|date:"d M Y, H:i"|default:"Never" }}</span></div>
+  </div>
+
+  <!-- Status Info -->
+  <div class="detail-card">
+    <h4>🔐 Status &amp; Scores</h4>
+    <div class="detail-row">
+      <span class="key">Email Verified</span>
+      <span class="val">{% if target.is_email_verified %}<span class="badge badge-green">✓ Yes</span>{% else %}<span class="badge badge-yellow">⏳ No</span>{% endif %}</span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Account Active</span>
+      <span class="val">{% if target.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Banned</span>{% endif %}</span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Staff Access</span>
+      <span class="val">{% if target.is_staff %}<span class="badge badge-blue">Yes</span>{% else %}<span class="badge badge-gray">No</span>{% endif %}</span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Superuser</span>
+      <span class="val">{% if target.is_superuser %}<span class="badge badge-purple">Yes</span>{% else %}<span class="badge badge-gray">No</span>{% endif %}</span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Trust Score</span>
+      <span class="val">
+        <span style="font-weight:700;font-size:1.1rem;{% if target.trust_score >= 80 %}color:#10b981;{% elif target.trust_score >= 50 %}color:#f59e0b;{% else %}color:#ef4444;{% endif %}">
+          {{ target.trust_score }}/200
+        </span>
+      </span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Items Posted</span><span class="val">{{ items.count }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="key">Claims Filed</span><span class="val">{{ claims.count }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Action Boxes -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+  <!-- Verify Email -->
+  {% if not target.is_email_verified %}
+  <div class="action-box">
+    <h4>✅ Manually Verify Email</h4>
+    <p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Override email OTP and mark this account as verified.</p>
+    <form method="post" action="{% url 'panel:user_verify' target.id %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-panel btn-panel-success">✅ Verify Account</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Toggle Ban -->
+  <div class="action-box">
+    <h4>{% if target.is_active %}🚫 Ban User{% else %}✅ Unban User{% endif %}</h4>
+    <p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">
+      {% if target.is_active %}Deactivate this account — user will be unable to log in.{% else %}Re-activate this account.{% endif %}
+    </p>
+    {% if target != request.user %}
+    <button class="btn-panel {% if target.is_active %}btn-panel-warning{% else %}btn-panel-success{% endif %}"
+      onclick="confirmAction('{% if target.is_active %}Ban User{% else %}Unban User{% endif %}',
+        '{% if target.is_active %}This will prevent {{ target.username }} from logging in.{% else %}This will restore login access for {{ target.username }}.{% endif %}',
+        '{% url 'panel:user_toggle_active' target.id %}',
+        '{% if target.is_active %}Ban User{% else %}Unban User{% endif %}',
+        '{% if target.is_active %}btn-panel-warning{% else %}btn-panel-success{% endif %}')">
+      {% if target.is_active %}🚫 Ban User{% else %}✅ Unban User{% endif %}
+    </button>
+    {% else %}
+    <p style="font-size:0.82rem;color:#ef4444;">Cannot modify your own account.</p>
+    {% endif %}
+  </div>
+
+  <!-- Trust Score -->
+  <div class="action-box">
+    <h4>⭐ Adjust Trust Score</h4>
+    <p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Current: <strong>{{ target.trust_score }}</strong> — Range: 0–200.</p>
+    <form method="post" action="{% url 'panel:user_adjust_trust' target.id %}" class="action-row">
+      {% csrf_token %}
+      <input type="number" name="trust_score" value="{{ target.trust_score }}" min="0" max="200"
+        style="width:90px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:0.875rem;">
+      <button type="submit" class="btn-panel btn-panel-primary">Update Score</button>
+    </form>
+  </div>
+
+  <!-- Toggle Staff -->
+  <div class="action-box">
+    <h4>🛠️ {% if target.is_staff %}Remove Staff Access{% else %}Grant Staff Access{% endif %}</h4>
+    <p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">
+      {% if target.is_staff %}Remove admin panel access from {{ target.username }}.{% else %}Give {{ target.username }} access to this admin panel.{% endif %}
+    </p>
+    {% if target != request.user %}
+    <button class="btn-panel {% if target.is_staff %}btn-panel-warning{% else %}btn-panel-primary{% endif %}"
+      onclick="confirmAction('{% if target.is_staff %}Remove Staff{% else %}Grant Staff{% endif %}',
+        'Are you sure you want to {% if target.is_staff %}remove staff access from{% else %}grant staff access to{% endif %} {{ target.username }}?',
+        '{% url 'panel:user_toggle_staff' target.id %}',
+        'Confirm', 'btn-panel-primary')">
+      {% if target.is_staff %}🚫 Remove Staff{% else %}⭐ Make Staff{% endif %}
+    </button>
+    {% else %}
+    <p style="font-size:0.82rem;color:#ef4444;">Cannot modify your own account.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Danger Zone -->
+{% if target != request.user %}
+<div class="danger-zone" style="margin-bottom:28px;">
+  <h5>⚠️ Danger Zone</h5>
+  <p style="font-size:0.85rem;color:#991b1b;margin-bottom:12px;">Permanently delete this account and ALL associated items, claims, and data. This cannot be undone.</p>
+  <button class="btn-panel btn-panel-danger"
+    onclick="confirmAction('Delete User Account',
+      'This will permanently delete {{ target.username }} and all their data. This cannot be undone!',
+      '{% url 'panel:user_delete' target.id %}',
+      '🗑️ Delete Permanently', 'btn-panel-danger')">
+    🗑️ Delete Account
+  </button>
+</div>
+{% endif %}
+
+<!-- Recent OTPs -->
+<div class="panel-section" style="margin-bottom:24px;">
+  <div class="panel-section-header">
+    <h3>🔑 Recent OTPs</h3>
+  </div>
+  <table class="panel-table">
+    <thead><tr><th>OTP Code</th><th>Created</th><th>Used</th><th>Valid</th></tr></thead>
+    <tbody>
+      {% for otp in otps %}
+      <tr>
+        <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:0.9rem;">{{ otp.otp_code }}</code></td>
+        <td style="font-size:0.82rem;color:#64748b;">{{ otp.created_at|date:"d M Y, H:i" }}</td>
+        <td>{% if otp.is_used %}<span class="badge badge-gray">Used</span>{% else %}<span class="badge badge-blue">Unused</span>{% endif %}</td>
+        <td>{% if otp.is_valid %}<span class="badge badge-green">Valid</span>{% else %}<span class="badge badge-red">Expired</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">No OTPs found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- User's Items -->
+<div class="panel-section" style="margin-bottom:24px;">
+  <div class="panel-section-header">
+    <h3>📦 Items Posted ({{ items.count }})</h3>
+  </div>
+  <table class="panel-table">
+    <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>City</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><strong>{{ item.title|truncatechars:40 }}</strong></td>
+        <td>{% if item.item_type == "LOST" %}<span class="badge badge-red">Lost</span>{% else %}<span class="badge badge-green">Found</span>{% endif %}</td>
+        <td>
+          {% if item.status == "OPEN" %}<span class="badge badge-blue">Open</span>
+          {% elif item.status == "RESOLVED" %}<span class="badge badge-green">Resolved</span>
+          {% elif item.status == "CLAIM_PENDING" %}<span class="badge badge-yellow">Claim Pending</span>
+          {% else %}<span class="badge badge-gray">Closed</span>{% endif %}
+        </td>
+        <td style="font-size:0.82rem;">{{ item.city }}</td>
+        <td style="font-size:0.8rem;color:#94a3b8;">{{ item.created_at|date:"d M Y" }}</td>
+        <td><a href="{% url 'panel:item_detail' item.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:16px;">No items posted.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- User's Claims -->
+<div class="panel-section">
+  <div class="panel-section-header">
+    <h3>📋 Claims Filed ({{ claims.count }})</h3>
+  </div>
+  <table class="panel-table">
+    <thead><tr><th>#</th><th>Item</th><th>Status</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+      {% for claim in claims %}
+      <tr>
+        <td style="color:#94a3b8;">#{{ claim.id }}</td>
+        <td><strong>{{ claim.item.title|truncatechars:40 }}</strong></td>
+        <td>
+          {% if claim.status == "PENDING" %}<span class="badge badge-yellow">Pending</span>
+          {% elif claim.status == "ACCEPTED" %}<span class="badge badge-green">Accepted</span>
+          {% elif claim.status == "REJECTED" %}<span class="badge badge-red">Rejected</span>
+          {% else %}<span class="badge badge-gray">Cancelled</span>{% endif %}
+        </td>
+        <td style="font-size:0.8rem;color:#94a3b8;">{{ claim.created_at|date:"d M Y" }}</td>
+        <td><a href="{% url 'panel:claim_detail' claim.id %}" class="btn-panel btn-panel-secondary btn-panel-sm">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:16px;">No claims filed.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

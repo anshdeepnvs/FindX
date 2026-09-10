@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Potential AI Matches | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-xs font-bold text-cyan-800 mb-2">
+      <span>🤖</span> FindX Correlation Engine
+    </div>
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Potential AI Matches</h1>
+    <p class="text-sm text-slate-500 mt-1 max-w-2xl">
+      FindX automatically correlates your reports against newly submitted lost and found records using semantic embeddings, categories, and date proximity.
+    </p>
+  </div>
+
+  <!-- Matches List -->
+  {% if matches %}
+    <div class="space-y-4">
+      {% for m in matches %}
+        <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-cyan-300 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          
+          <!-- Left: Correlation visual -->
+          <div class="flex items-center gap-5">
+            <!-- Score circle/pill -->
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex flex-col items-center justify-center text-center shadow-md flex-shrink-0">
+              <span class="text-lg font-extrabold leading-none">{{ m.final_score|floatformat:0 }}%</span>
+              <span class="text-[9px] font-semibold text-cyan-200 uppercase tracking-wider mt-1">Match</span>
+            </div>
+
+            <!-- Items pair -->
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-md
+                  {% if m.final_score >= 85 %} bg-emerald-50 text-emerald-700 border border-emerald-200
+                  {% elif m.final_score >= 70 %} bg-cyan-50 text-cyan-700 border border-cyan-200
+                  {% else %} bg-amber-50 text-amber-700 border border-amber-200 {% endif %}">
+                  {{ m.strength_label.0 }} Match
+                </span>
+                <span class="text-xs text-slate-400">&bull;</span>
+                <span class="text-xs font-medium text-slate-500">Status: {{ m.get_status_display }}</span>
+              </div>
+
+              <!-- Titles -->
+              <div class="text-base font-bold text-slate-900">
+                <span class="text-rose-700">[Lost] {{ m.lost_item.title }}</span>
+                <span class="text-slate-400 mx-2">&harr;</span>
+                <span class="text-emerald-700">[Found] {{ m.found_item.title }}</span>
+              </div>
+
+              <!-- Location & Date -->
+              <div class="text-xs text-slate-500 flex items-center gap-4">
+                <span>📍 Lost in: <strong>{{ m.lost_item.city }}</strong></span>
+                <span>📍 Found in: <strong>{{ m.found_item.city }}</strong></span>
+                <span>📅 Found date: {{ m.found_item.date_event|date:"M d, Y" }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Actions -->
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <a href="{% url 'matching:match_detail' m.id %}" class="px-5 py-2.5 rounded-xl bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold shadow-sm transition-colors">
+              Inspect Potential Match &rarr;
+            </a>
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-16 bg-white rounded-2xl border border-slate-200 p-6">
+      <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-3">
+        🔍
+      </div>
+      <h3 class="text-lg font-bold text-slate-800">No Matches Detected Yet</h3>
+      <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+        Don't worry. Your reports remain active in our database. As soon as another user registers an item that matches your description, it will appear here.
+      </p>
+      <div class="mt-6 flex justify-center gap-3">
+        <a href="{% url 'items:report_lost' %}" class="px-4 py-2 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors">
+          Report Another Lost Item
+        </a>
+        <a href="{% url 'items:item_list' %}" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+          Browse Listings
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

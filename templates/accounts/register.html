@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Create an Account | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-12 sm:py-16">
+  <div class="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-8 sm:p-12 space-y-8">
+    
+    <!-- Clean Header (No emoji or icon) -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 tracking-wide">
+        FindX Registration
+      </div>
+      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+        Create your account
+      </h1>
+      <p class="text-sm text-slate-500 max-w-sm mx-auto">
+        Report, correlate, and safely recover lost belongings with email verification.
+      </p>
+    </div>
+
+    <!-- Non-field errors -->
+    {% for error in form.non_field_errors %}
+      <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <span>{{ error }}</span>
+      </div>
+    {% endfor %}
+
+    <!-- Registration Form -->
+    <form method="post" novalidate class="space-y-5">
+      {% csrf_token %}
+
+      <!-- Username -->
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" for="{{ form.username.id_for_label }}">
+          Username <span class="text-rose-500">*</span>
+        </label>
+        {{ form.username }}
+        {% if form.username.errors %}
+          <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.username.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Email Address -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700" for="{{ form.email.id_for_label }}">
+            Email Address <span class="text-rose-500">*</span>
+          </label>
+          <span class="text-[11px] font-medium text-cyan-700">Verification OTP sent here</span>
+        </div>
+        {{ form.email }}
+        {% if form.email.errors %}
+          <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.email.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Phone Number -->
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" for="{{ form.phone_number.id_for_label }}">
+          Phone Number <span class="text-rose-500">*</span>
+        </label>
+        {{ form.phone_number }}
+        <p class="text-[11px] text-slate-500 mt-1.5">
+          Required for safe physical handover verification. Never publicly disclosed.
+        </p>
+        {% if form.phone_number.errors %}
+          <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.phone_number.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Passwords Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" for="{{ form.password.id_for_label }}">
+            Password <span class="text-rose-500">*</span>
+          </label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.password.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" for="{{ form.confirm_password.id_for_label }}">
+            Confirm Password <span class="text-rose-500">*</span>
+          </label>
+          {{ form.confirm_password }}
+          {% if form.confirm_password.errors %}
+            <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.confirm_password.errors.0 }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Submit CTA -->
+      <div class="pt-3">
+        <button type="submit" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-brand-900 via-brand-800 to-cyan-900 hover:from-brand-800 hover:to-cyan-800 text-white font-bold text-sm tracking-wide shadow-lg shadow-brand-900/15 hover:shadow-brand-900/25 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+          <span>Create Account &amp; Send OTP</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Security / Privacy badge -->
+      <div class="text-center pt-2">
+        <p class="text-[11px] text-slate-500">
+          Protected by anti-scam blind verification &bull; Zero spam guarantee
+        </p>
+      </div>
+
+    </form>
+
+    <!-- Sign In Link -->
+    <div class="pt-6 border-t border-slate-100 text-center text-xs text-slate-500">
+      Already have an account? 
+      <a href="{% url 'accounts:login' %}" class="font-bold text-cyan-700 hover:text-cyan-800 ml-1">
+        Sign in here &rarr;
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

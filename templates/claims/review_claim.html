@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Review Claim #{{ claim.id }} | FindX{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+    <div>
+      <span class="text-xs font-bold uppercase tracking-wider text-cyan-600">Verification Review</span>
+      <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Review Ownership Claim #{{ claim.id }}</h1>
+      <p class="text-xs text-slate-500 mt-0.5">
+        Claimed by <strong>{{ claim.claimant.get_full_name_or_username }}</strong> on "{{ claim.match.found_item.title }}"
+      </p>
+    </div>
+    <span class="px-3 py-1 rounded-full text-xs font-bold
+      {% if claim.status == 'ACCEPTED' %} bg-emerald-100 text-emerald-800
+      {% elif claim.status == 'REJECTED' %} bg-rose-100 text-rose-800
+      {% else %} bg-amber-100 text-amber-800 {% endif %}">
+      {{ claim.get_status_display }}
+    </span>
+  </div>
+
+  <!-- AI Verification Score Card -->
+  <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <span class="p-1.5 rounded-lg bg-cyan-100 text-cyan-700 text-sm">🤖</span>
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">FindX AI Verification Score</h2>
+          <p class="text-xs text-slate-500">Autonomous evaluation comparing claimant's answers against private item secrets</p>
+        </div>
+      </div>
+      {% if claim.is_ai_verified %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <span>✓</span> AI Verified (&ge; 70%)
+        </span>
+      {% else %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+          <span>⚠</span> Pending Manual Review (&lt; 70%)
+        </span>
+      {% endif %}
+    </div>
+
+    <!-- Score Metric Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">Match Score</span>
+        <span class="text-3xl font-extrabold {% if claim.ai_score and claim.ai_score >= 70 %}text-emerald-600{% elif claim.ai_score and claim.ai_score >= 40 %}text-amber-600{% else %}text-slate-700{% endif %}">
+          {{ claim.ai_score|default:0|floatformat:0 }}%
+        </span>
+        <div class="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+          <div class="h-full {% if claim.ai_score and claim.ai_score >= 70 %}bg-emerald-500{% elif claim.ai_score and claim.ai_score >= 40 %}bg-amber-500{% else %}bg-slate-400{% endif %}" style="width: {{ claim.ai_score|default:0 }}%;"></div>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">AI Confidence</span>
+        <span class="text-base font-bold text-slate-900 mt-2 block">{{ claim.ai_confidence|default:"PENDING" }}</span>
+        <span class="text-[10px] text-slate-500">Model certainty index</span>
+      </div>
+
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">Threshold Status</span>
+        <span class="text-xs font-bold mt-2 block {% if claim.is_ai_verified %}text-emerald-700{% else %}text-amber-700{% endif %}">
+          {% if claim.is_ai_verified %}70% Target Met (Auto-Accepted){% else %}Below 70% Target{% endif %}
+        </span>
+        <span class="text-[10px] text-slate-500">Auto-chat unlocks at 70%</span>
+      </div>
+    </div>
+
+    <!-- AI Reasoning Analysis -->
+    {% if claim.ai_reasoning %}
+      <div class="p-3.5 rounded-xl bg-cyan-50/70 border border-cyan-100 text-xs text-cyan-950 space-y-1">
+        <span class="font-bold text-cyan-900 block flex items-center gap-1.5">
+          <span>🧠</span> AI Analysis Breakdown:
+        </span>
+        <p class="leading-relaxed text-cyan-900/90">{{ claim.ai_reasoning }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Interactive AI Interview Dialogue Transcript -->
+  {% if claim.interview_history %}
+    <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+          <span>🎙️</span> AI Officer &amp; Claimant Verification Transcript
+        </div>
+        <span class="text-[11px] text-slate-400 font-medium">Recorded Session</span>
+      </div>
+
+      <div class="space-y-3 bg-slate-50/60 p-4 rounded-xl border border-slate-100 max-h-96 overflow-y-auto">
+        {% for msg in claim.interview_history %}
+          {% if msg.role == 'assistant' %}
+            <div class="flex items-start gap-2.5 max-w-[90%]">
+              <span class="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">🤖</span>
+              <div class="bg-white border border-slate-200 p-3 rounded-xl rounded-tl-sm text-xs text-slate-800 whitespace-pre-line shadow-xs">
+                <span class="font-bold text-[10px] text-cyan-800 uppercase block mb-1">AI Officer</span>
+                {{ msg.content }}
+              </div>
+            </div>
+          {% else %}
+            <div class="flex items-start justify-end gap-2.5 max-w-[90%] ml-auto">
+              <div class="bg-slate-900 text-white p-3 rounded-xl rounded-tr-sm text-xs whitespace-pre-line shadow-xs text-left">
+                <span class="font-bold text-[10px] text-cyan-300 uppercase block mb-1">Claimant ({{ claim.claimant.username }})</span>
+                {{ msg.content }}
+              </div>
+              <span class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                {{ claim.claimant.username|make_list|first|upper }}
+              </span>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Claimant's Submitted Verification Answer -->
+  <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+    <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+      <span>💬</span> Claimant's Answers to Challenge
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 leading-relaxed">
+      {{ claim.answer_text }}
+    </div>
+
+    {% if claim.additional_info %}
+      <div>
+        <span class="text-xs font-bold text-slate-500 block mb-1">Additional Notes:</span>
+        <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">{{ claim.additional_info }}</p>
+      </div>
+    {% endif %}
+
+    {% if claim.proof_image %}
+      <div>
+        <span class="text-xs font-bold text-slate-500 block mb-1">Uploaded Proof Image:</span>
+        <div class="rounded-xl overflow-hidden border border-slate-200 max-w-sm">
+          <img src="{{ claim.proof_image.url }}" alt="Claim proof" class="w-full object-cover" />
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Review Decision Box (If pending) -->
+  {% if claim.status == 'PENDING' %}
+    <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+      <h3 class="text-base font-bold text-slate-900">Your Decision</h3>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Do the claimant's answers match the unique hidden details or contents of the item you found?
+      </p>
+
+      <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
+        <!-- Accept form -->
+        <form method="post" class="w-full sm:w-auto">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="accept" />
+          <button type="submit" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow transition-colors flex items-center justify-center gap-2">
+            <span>✓</span> Accept Claim &amp; Unlock Chat
+          </button>
+        </form>
+
+        <!-- Reject toggle -->
+        <button onclick="document.getElementById('rejectBox').classList.toggle('hidden')" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold border border-rose-200 transition-colors">
+          Reject Claim
+        </button>
+      </div>
+
+      <!-- Hidden reject reason form -->
+      <div id="rejectBox" class="hidden pt-4 border-t border-slate-100">
+        <form method="post" class="space-y-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reject" />
+          <label class="block text-xs font-semibold text-slate-700">Reason for rejection (shared with claimant)</label>
+          <textarea name="rejection_reason" rows="2" class="findx-input" placeholder="e.g. The wallpaper description and lockscreen photo do not match the found device."></textarea>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">
+            Confirm Rejection
+          </button>
+        </form>
+      </div>
+    </div>
+  {% elif claim.status == 'ACCEPTED' %}
+    <!-- Accepted State & Next Step -->
+    <div class="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-4">
+      <div class="flex items-center gap-2 font-bold text-sm">
+        <span>🎉</span> Claim Accepted! Next Step: Safe Handover
+      </div>
+      <p class="text-xs text-emerald-800 leading-relaxed">
+        You and the owner can now communicate safely in the in-platform chat to arrange the physical return.
+      </p>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a href="{% url 'chat:conversation_list' %}" class="px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold shadow-sm">
+          💬 Open Secure Chat
+        </a>
+        <a href="{% url 'claims:return_confirm' claim.id %}" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-sm">
+          Mark Item as Returned &rarr;
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
