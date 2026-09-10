@@ -12,6 +12,28 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _extract_vault_details(lost_item):
+    """Safely extracts private vault information from lost_item or any associated match counterpart."""
+    private = getattr(lost_item, "private_detail", None)
+    hidden_details = private.hidden_info if private else ""
+    challenge_question = private.challenge_question if private else ""
+    serial_hint = private.serial_hint if private else ""
+
+    if not hidden_details and not challenge_question:
+        for rel_attr in ["matches_as_lost", "matches_as_found"]:
+            if hasattr(lost_item, rel_attr):
+                for m in getattr(lost_item, rel_attr).all()[:3]:
+                    other_item = m.found_item if rel_attr == "matches_as_lost" else m.lost_item
+                    other_priv = getattr(other_item, "private_detail", None)
+                    if other_priv and (other_priv.hidden_info or other_priv.challenge_question):
+                        return (
+                            other_priv.hidden_info or "",
+                            other_priv.challenge_question or "",
+                            other_priv.serial_hint or "",
+                        )
+    return hidden_details, challenge_question, serial_hint
+
+
 def evaluate_claim_ownership(lost_item, claimant_answer, claimant_notes=""):
     """
     Evaluates whether the claimant's answer proves ownership.
@@ -24,14 +46,7 @@ def evaluate_claim_ownership(lost_item, claimant_answer, claimant_notes=""):
         "provider": str ("gemini" or "local_nlp"),
     }
     """
-    private = getattr(lost_item, "private_detail", None)
-    if not private or not private.hidden_info:
-        if hasattr(lost_item, "matches_as_lost"):
-            m = lost_item.matches_as_lost.first()
-            if m and getattr(m.found_item, "private_detail", None) and m.found_item.private_detail.hidden_info:
-                private = m.found_item.private_detail
-    hidden_details = private.hidden_info if private else ""
-    challenge_question = private.challenge_question if private else ""
+    hidden_details, challenge_question, serial_hint = _extract_vault_details(lost_item)
 
     gemini_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "").strip()
 
@@ -43,46 +58,63 @@ def evaluate_claim_ownership(lost_item, claimant_answer, claimant_notes=""):
                 item_title=lost_item.title,
                 hidden_details=hidden_details,
                 challenge_question=challenge_question,
+                serial_hint=serial_hint,
                 claimant_answer=claimant_answer,
                 claimant_notes=claimant_notes,
             )
         except Exception as e:
             logger.warning(f"Gemini API evaluation failed ({e}), falling back to local NLP evaluator.")
 
-    # Fallback to local semantic NLP evaluator (sentence-transformers + keyword overlap)
+    # Fallback to local semantic NLP evaluator
     return _evaluate_with_local_nlp(
         item_title=lost_item.title,
         hidden_details=hidden_details,
         challenge_question=challenge_question,
+        serial_hint=serial_hint,
         claimant_answer=claimant_answer,
         claimant_notes=claimant_notes,
     )
 
 
-def _evaluate_with_gemini(api_key, item_title, hidden_details, challenge_question, claimant_answer, claimant_notes):
-    """Evaluates the claim using Google Gemini 1.5 Flash / 2.5 Flash API."""
+def _evaluate_with_gemini(api_key, item_title, hidden_details, challenge_question, serial_hint, claimant_answer, claimant_notes):
+    """Evaluates the claim using Google Gemini 1.5 Flash API with fair owner scoring guidelines."""
     from google import genai
 
     client = genai.Client(api_key=api_key)
 
     prompt = f"""
-You are the Anti-Scam Security Evaluator for the FindX Lost and Found Platform.
-Your duty is to verify whether a claimant's answer genuinely proves they are the true owner of an item.
+You are the Senior Anti-Scam Verification Evaluator for the FindX Lost and Found Platform.
+Your job is to rigorously evaluate whether a claimant's responses prove they are the true owner of an item.
 
 [ITEM TITLE]: {item_title}
 [VERIFICATION CHALLENGE QUESTION]: {challenge_question}
 [TRUE SECRET PRIVATE DETAILS (Stored in Vault)]: {hidden_details}
+[SERIAL / IDENTIFIER HINT]: {serial_hint}
 
-[CLAIMANT'S SUBMITTED ANSWER]: {claimant_answer}
+[CLAIMANT'S SUBMITTED ANSWERS]: {claimant_answer}
 [CLAIMANT'S ADDITIONAL NOTES]: {claimant_notes}
 
-INSTRUCTIONS:
-1. Compare the claimant's answer against the true secret details. Look for specific identifying traits:
-   - Matching unique scratches, wallpapers, stickers, serial snippets, or pocket contents.
-   - Beware of vague generic answers (e.g., "it is my black phone", "lost it yesterday") which should score low (<40%).
-2. Output a match_score between 0 and 100.
-3. If the claimant accurately identifies key secret traits, award 70 to 100 points.
-4. Output STRICT JSON only with this schema:
+EVALUATION & SCORING GUIDELINES:
+1. FAIRNESS FOR REAL OWNERS:
+   - Genuine owners speak naturally and may use slight phrasing variations, synonyms, or informal descriptions
+     (e.g., "metro pass" instead of "metro card", "husky" or "puppy" instead of "white husky dog", "batman sticker",
+     "500 rupee note", "blue back cover", "cracked bottom corner").
+   - If the claimant accurately identifies key unique confidential details stored in the vault, DO NOT penalize
+     for conversational wording or missing minor words. Award high confidence (75 to 98 points).
+   - If the claimant provides serial digits, specific card names, money denominations, or unique stickers/wallpapers,
+     award 85 to 98 points.
+
+2. RIGOR AGAINST SCAMMERS:
+   - Vague, generic responses (e.g., "it is my black phone", "lost it yesterday", "please give it back, it was a gift")
+     that contain NO confidential vault details MUST score below 40%.
+
+3. SCORE RANGES:
+   - 85 - 98%: Strongly verified. Claimant identified multiple confidential markers, numbers, or specific unique traits.
+   - 70 - 84%: Verified owner. Claimant clearly identified at least 1 key confidential vault secret or correctly answered the challenge.
+   - 40 - 69%: Inconclusive / Partial. Some general features align, but key private identifiers were missed or ambiguous.
+   - 0 - 39%: Unverified / Potential Fraud. Generic assertions or conflicting details with zero confidential match.
+
+Output STRICT JSON only:
 {{
   "match_score": <number between 0 and 100>,
   "confidence": "<HIGH | MEDIUM | LOW | FRAUD_ALERT>",
@@ -96,7 +128,6 @@ INSTRUCTIONS:
     )
 
     text = response.text.strip()
-    # Extract JSON block
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
         data = json.loads(match.group(0))
@@ -113,13 +144,22 @@ INSTRUCTIONS:
     raise ValueError(f"Could not parse JSON from Gemini response: {text}")
 
 
-def _evaluate_with_local_nlp(item_title, hidden_details, challenge_question, claimant_answer, claimant_notes):
+def _stem(w):
+    """Simple English stemmer for root word matching (e.g. cards -> card, stickers -> sticker)."""
+    for s in ["ing", "ers", "er", "ies", "es", "s", "ed"]:
+        if w.endswith(s) and len(w) > len(s) + 2:
+            return w[:-len(s)]
+    return w
+
+
+def _evaluate_with_local_nlp(item_title, hidden_details, challenge_question, serial_hint, claimant_answer, claimant_notes):
     """
-    Local NLP Evaluator using sentence-transformers embeddings + token matching.
-    Zero-cost, offline, fast, and highly accurate.
+    Advanced Multi-Facet Local NLP Evaluator.
+    Combines semantic embeddings, key discriminator extraction, clause/marker coverage,
+    and n-gram phrase matching to accurately reward genuine owners while rejecting scammers.
     """
     full_claim = f"{claimant_answer} {claimant_notes}".strip().lower()
-    full_secret = f"{hidden_details} {challenge_question}".strip().lower()
+    full_secret = f"{hidden_details} {challenge_question} {serial_hint}".strip().lower()
 
     if not full_claim or not full_secret:
         return {
@@ -130,88 +170,136 @@ def _evaluate_with_local_nlp(item_title, hidden_details, challenge_question, cla
             "provider": "local_nlp",
         }
 
-    # 1. Semantic Embedding Similarity
-    semantic_sim = 0.0
-    try:
-        from matching.text_matching import semantic_similarity
-        # Compare against secret vault details primarily, fallback to challenge question
-        target_secret = hidden_details.strip() if hidden_details.strip() else challenge_question.strip()
-        semantic_sim = semantic_similarity(full_claim, target_secret)
-    except Exception as e:
-        logger.warning(f"Semantic similarity failed: {e}")
-
-    # 2. Key Token & Keyword Overlap
-    # Ignore common stop words and interrogative words
+    # Stop words to ignore during discriminative analysis
     stop_words = {
         "the", "a", "an", "is", "it", "in", "on", "at", "to", "for", "of", "and",
         "or", "with", "my", "your", "this", "that", "there", "has", "have", "had",
         "was", "were", "i", "me", "inside", "back", "front", "what", "are", "contains",
         "about", "describe", "any", "some", "which", "when", "where", "who", "whom",
-        "item", "items", "details", "detail", "question"
+        "item", "items", "details", "detail", "question", "please", "also", "here",
+        "there", "very", "can", "could", "would", "like", "one", "two", "three", "four",
+        "lost", "found", "around", "near", "side", "other", "into", "from", "just"
     }
-    # Secret tokens should come from the vault secret info
+
+    # Primary secret target
     target_secret = hidden_details.strip() if hidden_details.strip() else challenge_question.strip()
-    secret_tokens = set(re.findall(r"\b[a-z0-9]{3,}\b", target_secret.lower())) - stop_words
-    claim_tokens = set(re.findall(r"\b[a-z0-9]{3,}\b", full_claim)) - stop_words
 
-    if secret_tokens:
-        overlap = len(secret_tokens.intersection(claim_tokens)) / len(secret_tokens)
-    else:
-        overlap = semantic_sim
+    # 1. Semantic Embedding Similarity
+    semantic_sim = 0.0
+    try:
+        from matching.text_matching import semantic_similarity
+        semantic_sim = semantic_similarity(full_claim, target_secret)
+    except Exception as e:
+        logger.warning(f"Semantic similarity failed: {e}")
 
-    # Weighted Composite Score:
-    # 60% token overlap on specific secret identifiers + 40% semantic context
-    composite = (overlap * 0.60) + (semantic_sim * 0.40)
-    match_score = round(composite * 100.0, 1)
-    match_score = max(5.0, min(98.0, match_score))
+    # 2. Extract Claim Tokens and Stems
+    claim_words = re.findall(r"\b[a-z0-9]+\b", full_claim)
+    claim_tokens = set(w for w in claim_words if w not in stop_words and len(w) >= 3)
+    claim_stems = set(_stem(w) for w in claim_tokens)
 
-    is_verified = match_score >= 70.0
+    # 3. Clause & Secret Marker Verification
+    raw_clauses = re.split(r"[,;\n\.]+|\band\b|\bplus\b", target_secret, flags=re.IGNORECASE)
+    valid_clauses = []
+    for c in raw_clauses:
+        words = [w for w in re.findall(r"\b[a-z0-9]+\b", c.lower()) if w not in stop_words and len(w) >= 3]
+        if words:
+            valid_clauses.append((c.strip(), words))
 
-    if match_score >= 85:
-        confidence = "HIGH"
-        reasoning = f"Excellent match ({match_score}%). Claimant accurately matched key secret identifying traits."
-    elif match_score >= 70:
-        confidence = "HIGH"
-        reasoning = f"Strong match ({match_score}%). Claimant's answers closely align with the owner's private verification details."
-    elif match_score >= 50:
-        confidence = "MEDIUM"
-        reasoning = f"Partial match ({match_score}%). Some details aligned but key identifying traits were missing or vague."
-    else:
+    matched_clauses = 0
+    matched_phrases = []
+
+    for clause_text, words in valid_clauses:
+        clause_matched = False
+        # Check consecutive 2-word phrase matches
+        for i in range(len(words) - 1):
+            phrase = f"{words[i]} {words[i+1]}"
+            if phrase in full_claim:
+                clause_matched = True
+                matched_phrases.append(phrase)
+                break
+
+        if not clause_matched:
+            # Check token/stem overlap for this clause
+            matched_words = sum(1 for w in words if w in claim_tokens or _stem(w) in claim_stems)
+            ratio = matched_words / len(words)
+            if ratio >= 0.45 or (len(words) == 1 and ratio > 0):
+                clause_matched = True
+
+        if clause_matched:
+            matched_clauses += 1
+
+    total_clauses = max(1, len(valid_clauses))
+    clause_ratio = matched_clauses / total_clauses
+
+    # 4. Number & Serial Snippet Match
+    secret_nums = set(re.findall(r"\b\d+\b", target_secret))
+    if serial_hint:
+        secret_nums.update(re.findall(r"\b\d+\b", serial_hint))
+    claim_nums = set(re.findall(r"\b\d+\b", full_claim))
+    num_matched = secret_nums.intersection(claim_nums)
+
+    # 5. Token Overlap
+    secret_words = [w for w in re.findall(r"\b[a-z0-9]+\b", target_secret.lower()) if w not in stop_words and len(w) >= 3]
+    secret_tokens = set(secret_words)
+    secret_stems = set(_stem(w) for w in secret_tokens)
+    matched_tokens = sum(1 for w in secret_tokens if w in claim_tokens or _stem(w) in claim_stems)
+    token_overlap = matched_tokens / max(1, len(secret_tokens))
+
+    # 6. Composite Score Synthesis
+    if matched_clauses == 0 and not num_matched and token_overlap < 0.20:
+        # Vague or scammer claim: cap score low (< 35%)
+        match_score = min(35.0, (semantic_sim * 25.0) + (token_overlap * 20.0))
+        match_score = max(8.0, round(match_score, 1))
         confidence = "LOW"
-        reasoning = f"Low confidence ({match_score}%). Claimant's description did not match the owner's private vault details."
+        reasoning = f"Low confidence ({match_score:.0f}%). Claimant provided generic statements without matching the confidential vault details."
+    else:
+        # Genuine secret markers identified
+        if clause_ratio >= 0.75:
+            marker_score = 92.0 + (clause_ratio - 0.75) * 20.0
+        elif clause_ratio >= 0.40:
+            marker_score = 80.0 + (clause_ratio - 0.40) * 30.0
+        else:
+            marker_score = 74.0
+
+        composite = (marker_score * 0.50) + (token_overlap * 100.0 * 0.30) + (semantic_sim * 100.0 * 0.20)
+
+        if num_matched:
+            composite += 6.0
+        if matched_phrases:
+            composite += 4.0
+
+        match_score = max(72.0 if matched_clauses > 0 else 50.0, composite)
+        match_score = min(98.0, round(match_score, 1))
+
+        if match_score >= 85.0:
+            confidence = "HIGH"
+            reasoning = f"Excellent match ({match_score:.0f}%). Claimant accurately matched key confidential traits ({matched_clauses} of {total_clauses} secret markers verified)."
+        elif match_score >= 70.0:
+            confidence = "HIGH"
+            reasoning = f"Strong match ({match_score:.0f}%). Claimant answers closely align with confidential vault specifications."
+        else:
+            confidence = "MEDIUM"
+            reasoning = f"Partial match ({match_score:.0f}%). Some details aligned but confidential markers were not conclusively proven."
 
     return {
         "match_score": match_score,
-        "is_verified": is_verified,
+        "is_verified": match_score >= 70.0,
         "confidence": confidence,
         "reasoning": reasoning,
         "provider": "local_nlp",
     }
 
 
-TOTAL_VERIFICATION_STEPS = 5
+TOTAL_VERIFICATION_STEPS = 6
 
 
 def generate_ai_interview_question(lost_item, interview_history, question_index=1):
     """
-    Generates the next verification question in the conversational AI interview.
-    question_index ranges from 1 to 5:
-      1: Distinctive physical markings, scratches, stickers, casing.
-      2: Internal contents, wallpaper, cards, compartments, attachments.
-      3: Serial number/IMEI snippet, purchase/receipt, brand nuance.
-      4: Loss scenario, exact timeline, location, and circumstances.
-      5: Supporting visual proof (photo of item, purchase bill/invoice, or warranty card).
+    Generates the next adaptive verification question in the conversational AI interview (up to 6 questions).
+    Dynamically analyzes previous answers and item category to ask tailored follow-up questions.
     """
-    private = getattr(lost_item, "private_detail", None)
-    if not private or not private.hidden_info:
-        if hasattr(lost_item, "matches_as_lost"):
-            m = lost_item.matches_as_lost.first()
-            if m and getattr(m.found_item, "private_detail", None) and m.found_item.private_detail.hidden_info:
-                private = m.found_item.private_detail
-    hidden_details = private.hidden_info if private else ""
-    challenge_question = private.challenge_question if private else ""
-    serial_hint = private.serial_hint if private else ""
-    category_name = lost_item.category.name.lower() if lost_item.category else "item"
+    hidden_details, challenge_question, serial_hint = _extract_vault_details(lost_item)
+    category_name = lost_item.category.name.lower() if getattr(lost_item, "category", None) else "item"
 
     gemini_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "").strip()
     if gemini_key:
@@ -233,7 +321,9 @@ def generate_ai_interview_question(lost_item, interview_history, question_index=
         item_title=lost_item.title,
         category=category_name,
         challenge_question=challenge_question,
+        hidden_details=hidden_details,
         question_index=question_index,
+        interview_history=interview_history,
     )
 
 
@@ -244,7 +334,7 @@ def _generate_question_with_gemini(api_key, item_title, category, hidden_details
 
     transcript_text = "\n".join(
         f"{msg.get('role', 'user').upper()}: {msg.get('content', '')}"
-        for msg in interview_history[-8:]
+        for msg in interview_history[-10:]
     )
 
     prompt = f"""
@@ -258,16 +348,20 @@ Interview Transcript so far:
 {transcript_text}
 
 You are at Question {question_index} of {TOTAL_VERIFICATION_STEPS}.
-- Question 1: Ask about distinctive physical traits, scratches, stickers, wear, or custom casing not visible in public listings.
-- Question 2: Ask about internal contents, lockscreen wallpaper (if digital), items inside specific pockets/compartments (if bag/wallet), or attached cards/keys.
-- Question 3: Ask for serial/IMEI snippet, purchase receipt date, invoice, or exact brand model nuances.
-- Question 4: Ask about the exact timeline, specific location, and circumstances of how and when the item was lost.
-- Question 5: Ask the claimant to upload an image as proof (such as a photo of the item, an old photo using it, a purchase bill/receipt, or box).
 
-CRITICAL INSTRUCTIONS:
-- Never reveal any of the secret vault details or answers in your question!
-- Ask in a professional, courteous, yet rigorous tone as an AI security officer.
-- Keep the response concise (1 to 2 sentences max).
+OBJECTIVE:
+Formulate the next dynamic verification question tailored specifically to this item and the interview context.
+1. Review what the claimant has already answered so far. DO NOT repeat topics they have already answered in detail.
+2. Target an unverified or untested aspect of ownership:
+   - Unique physical traits: scratches, custom skins/cases, stickers, or engravings.
+   - Internal contents / lockscreen: wallpaper image, specific cards, money denominations, pocket contents, or attachments.
+   - Unique identifiers / purchase info: serial number or IMEI snippet, purchase store, approximate date, invoice details.
+   - Loss scenario: exact timeline, specific route/landmarks, transit station/platform, or circumstances.
+   - Accompanying accessories: charger, cable, keychain, bag it was inside, or secondary items carried together.
+   - Step {TOTAL_VERIFICATION_STEPS} (Final Step): Ask for supporting visual proof (photo of item, old photo using it, purchase bill/receipt, or box/warranty).
+3. CRITICAL SECURITY RULE:
+   - NEVER reveal, hint at, or leak any of the confidential vault details or answers in your question!
+   - Keep the question concise, polite, professional, and natural (1 to 2 sentences max).
 """
 
     response = client.models.generate_content(
@@ -277,31 +371,80 @@ CRITICAL INSTRUCTIONS:
     return response.text.strip()
 
 
-def _generate_question_local(item_title, category, challenge_question, question_index):
-    """Local rule-based fallback questions tailored to category and step."""
-    cat = category.lower()
+def _generate_question_local(item_title, category, challenge_question, hidden_details, question_index, interview_history=None):
+    """
+    Adaptive local rule-based question generator tailored to category, context,
+    and previous answers in the interview up to 6 steps.
+    """
+    cat = (category or "").lower()
+
+    # Consolidate prior user answers to detect topics already covered
+    prior_text = ""
+    if interview_history:
+        prior_text = " ".join(
+            m.get("content", "").lower()
+            for m in interview_history
+            if m.get("role") == "user" or m.get("sender") is not None
+        )
+
+    has_wallpaper_or_inner = any(k in prior_text for k in ["wallpaper", "lockscreen", "screen", "pocket", "compartment", "inside", "card", "cash", "note", "money"])
+    has_markings = any(k in prior_text for k in ["scratch", "sticker", "dent", "cover", "case", "color", "mark", "broken", "engrav"])
+    has_serial_or_purchase = any(k in prior_text for k in ["serial", "imei", "bill", "invoice", "bought", "purchase", "store", "model", "apple", "samsung", "warranty"])
+    has_circumstances = any(k in prior_text for k in ["lost", "left", "forgot", "station", "metro", "bus", "gate", "road", "pm", "am", "yesterday", "platform"])
 
     if question_index == 1:
-        if challenge_question:
-            return f"To begin ownership verification: {challenge_question}"
-        return f"Could you please describe any distinctive physical markings, scratches, stickers, color wear, or custom casing on your '{item_title}'?"
+        if challenge_question and len(challenge_question.strip()) > 5:
+            return f"To begin ownership verification: {challenge_question.strip()}"
+        elif "phone" in cat or "laptop" in cat or "electronic" in cat:
+            return f"Could you describe any distinctive physical markings, custom protective casing, skin/sticker, or exterior marks on your '{item_title}'?"
+        elif "wallet" in cat or "bag" in cat or "backpack" in cat:
+            return f"Could you describe the specific material, exterior zippers, brand logo/badge, or distinctive wear on your '{item_title}'?"
+        elif "key" in cat:
+            return f"How many keys are on the ring, and what distinctive keychain, tag, or fob is attached to them?"
+        elif "document" in cat or "card" in cat:
+            return f"What specific name, issuing authority, or card number snippet is on the document/card?"
+        else:
+            return f"Could you please describe any distinctive physical markings, scratches, stickers, color wear, or custom parts on your '{item_title}'?"
 
     elif question_index == 2:
-        if "phone" in cat or "mobile" in cat or "laptop" in cat or "electronics" in cat:
-            return "Thank you. Next, could you describe the lockscreen wallpaper, installed unique apps, or specific internal setting/back-cover detail on the device?"
+        if "phone" in cat or "laptop" in cat or "electronic" in cat:
+            if has_wallpaper_or_inner:
+                return "Thank you. What specific installed apps, home screen widgets, or device storage capacity does it have?"
+            return "Thank you. Next, could you describe the lockscreen wallpaper, display theme, or specific screen protector/sticker on the device?"
         elif "wallet" in cat or "bag" in cat or "backpack" in cat:
+            if has_wallpaper_or_inner:
+                return "Thank you. Were there any specific receipts, coins, loyalty cards, or small miscellaneous items inside?"
             return "Thank you. Next, could you specify what exactly was inside the inner pockets, compartments, cards, or keychains attached?"
+        elif "key" in cat:
+            return "Thank you. What specific keys (e.g. bike, car, padlock, godrej) or distinctive engraved markings are present?"
         else:
             return "Thank you. Next, what was attached to, stored inside, or uniquely customized on the item that proves it is yours?"
 
     elif question_index == 3:
-        return "Noted. Could you provide any serial number snippet / IMEI hint (or last 4 digits), purchase bill/store, or specific brand model nuance?"
+        if "phone" in cat or "laptop" in cat or "electronic" in cat:
+            if has_serial_or_purchase:
+                return "Noted. Which carrier network/SIM was inserted, and approximately what battery percentage remained when you lost it?"
+            return "Noted. Could you provide any serial number snippet, IMEI last 4 digits, specific model code, or original purchase details?"
+        elif "document" in cat or "card" in cat:
+            return "Noted. Could you provide any identification number snippet, expiry date, or specific branch/registration detail?"
+        else:
+            return "Noted. Where and approximately when was the item originally purchased, or do you know the exact brand model name/variant?"
 
     elif question_index == 4:
+        if has_circumstances:
+            return "Understood. Can you describe what route or specific spots you visited right before you noticed it was missing?"
         return "Where and when exactly did you last have or lose the item? Please describe the approximate time, precise location, and surrounding circumstances."
 
+    elif question_index == 5:
+        if "phone" in cat or "laptop" in cat or "electronic" in cat:
+            return "Were any accessories carried with it (e.g. charger, earphones, stylus, pouch), or were there any unique Bluetooth/Wi-Fi devices paired with it?"
+        elif "wallet" in cat or "bag" in cat:
+            return "Were there any additional personal items, transit tokens, keys, or photos inside that haven't been mentioned yet?"
+        else:
+            return "Are there any other unique personal touches, accompanying accessories, or small details that only the true owner would know?"
+
     else:
-        return "Final verification step: Please upload a photo of the item, an old photo of you using it, or a purchase receipt/invoice as visual proof (you can also describe it if you don't have a photo)."
+        return "Final verification step: Please upload a photo of the item, an old photo of you using it, or a purchase invoice/receipt as visual proof (you may also describe any official proof document if you don't have an image ready)."
 
 
 def verify_claim_image(lost_item, image_file):
@@ -431,9 +574,11 @@ def evaluate_interview_transcript(lost_item, interview_history, proof_image=None
         img_result = verify_claim_image(lost_item, proof_image)
 
     # Weighted Composite Score:
-    # If proof image provided: 70% secret answers + 30% visual proof verification
+    # If proof image provided: combine secret answers + visual proof verification
     if img_result and img_result.get("is_valid_proof"):
-        final_score = (text_result["match_score"] * 0.70) + (img_result["image_score"] * 0.30)
+        weighted = (text_result["match_score"] * 0.70) + (img_result["image_score"] * 0.30)
+        # Ensure providing valid proof image never degrades an already-passing text match
+        final_score = max(weighted, text_result["match_score"])
         final_score = round(final_score, 1)
         reasoning = f"{text_result['reasoning']} Visual proof analysis: {img_result['visual_analysis']}"
     else:

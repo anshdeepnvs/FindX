@@ -11,6 +11,7 @@ from .ai_verifier import (
     evaluate_claim_ownership,
     generate_ai_interview_question,
     evaluate_interview_transcript,
+    TOTAL_VERIFICATION_STEPS,
 )
 from .emails import send_ai_verified_claim_email
 
@@ -52,8 +53,8 @@ def submit_claim(request, match_id):
         first_msg = (
             f"👋 Hello {request.user.get_full_name_or_username()}! I am FindX's AI Verification Officer.\n\n"
             f"To verify your ownership of \"{match.found_item.title}\" and ensure community safety, "
-            f"I will ask you 5 confidential verification questions based on item parameters.\n\n"
-            f"❓ Question 1 of 5:\n{q1}"
+            f"I will ask you up to {TOTAL_VERIFICATION_STEPS} confidential verification questions based on item parameters.\n\n"
+            f"❓ Question 1 of {TOTAL_VERIFICATION_STEPS}:\n{q1}"
         )
         Message.objects.create(
             conversation=convo,
@@ -171,14 +172,14 @@ def ai_chat_send(request, match_id):
 
     user_answers_count = convo.messages.filter(sender=request.user).count()
 
-    if user_answers_count < 5:
+    if user_answers_count < TOTAL_VERIFICATION_STEPS:
         next_step = user_answers_count + 1
         history = [
             {'role': 'user' if m.sender else 'assistant', 'content': m.content}
             for m in convo.messages.order_by('created_at')
         ]
         next_q = generate_ai_interview_question(match.lost_item, history, next_step)
-        ai_response_text = f"❓ Question {next_step} of 5:\n{next_q}"
+        ai_response_text = f"❓ Question {next_step} of {TOTAL_VERIFICATION_STEPS}:\n{next_q}"
 
         ai_msg = Message.objects.create(
             conversation=convo,
@@ -196,7 +197,7 @@ def ai_chat_send(request, match_id):
         })
 
     else:
-        # All 5 verification questions answered -> Perform AI evaluation
+        # Verification questions answered -> Perform AI evaluation
         history = [
             {'role': 'user' if m.sender else 'assistant', 'content': m.content}
             for m in convo.messages.order_by('created_at')

@@ -195,13 +195,22 @@ class FindXFlowTests(TestCase):
         })
         self.assertEqual(res4.status_code, 200)
 
-        # 6. Answer Question 5 (Final Step: photo/proof description) -> Triggers AI evaluation!
+        # 6. Answer Question 5 -> Generates Question 6
         res5 = self.client.post(f"/chat/{convo2.id}/send/", {
-            "content": "I have the purchase invoice and an old photo of the wallet with my library card."
+            "content": "Attached with a small brass ring and pen."
         })
         self.assertEqual(res5.status_code, 200)
         data5 = res5.json()
-        self.assertEqual(data5["convo_status"], Conversation.STATUS_PENDING_FINDER)
+        self.assertEqual(data5["convo_status"], Conversation.STATUS_AI_VERIFY)
+        self.assertEqual(len(data5["messages"]), 2)  # User answer + AI Question 6
+
+        # 7. Answer Question 6 (Final Step: photo/proof description) -> Triggers AI evaluation!
+        res6 = self.client.post(f"/chat/{convo2.id}/send/", {
+            "content": "I have the purchase invoice and an old photo of the wallet with my library card."
+        })
+        self.assertEqual(res6.status_code, 200)
+        data6 = res6.json()
+        self.assertEqual(data6["convo_status"], Conversation.STATUS_PENDING_FINDER)
 
         claim2.refresh_from_db()
         convo2.refresh_from_db()
@@ -211,7 +220,7 @@ class FindXFlowTests(TestCase):
         self.assertEqual(claim2.handover_otp, "")  # No OTP released yet
         self.assertEqual(convo2.status, Conversation.STATUS_PENDING_FINDER)
 
-        # 7. Finder reviews chat and confirms owner -> releases OTP
+        # 8. Finder reviews chat and confirms owner -> releases OTP
         self.client.login(username="finder", password="password123")
         confirm_res = self.client.post(f"/chat/{convo2.id}/confirm-owner/")
         self.assertRedirects(confirm_res, f"/chat/{convo2.id}/")
@@ -222,5 +231,43 @@ class FindXFlowTests(TestCase):
         self.assertEqual(claim2.status, OwnershipClaim.STATUS_ACCEPTED)
         self.assertEqual(len(claim2.handover_otp), 6)  # OTP released!
         self.assertEqual(convo2.status, Conversation.STATUS_ACTIVE)
+
+    def test_ai_scoring_genuine_owner_fairness(self):
+        from claims.ai_verifier import evaluate_claim_ownership
+        # Genuine owner who provides key secret details using conversational wording
+        res = evaluate_claim_ownership(
+            lost_item=self.lost_item,
+            claimant_answer="I have a batman sticker on the back and dog wallpaper of my husky.",
+            claimant_notes="Lost at Rajiv Chowk."
+        )
+        self.assertTrue(res["is_verified"])
+        self.assertGreaterEqual(res["match_score"], 75.0)
+        self.assertEqual(res["confidence"], "HIGH")
+
+    def test_ai_scoring_scammer_rejection(self):
+        from claims.ai_verifier import evaluate_claim_ownership
+        # Scammer giving vague generic guesses
+        res = evaluate_claim_ownership(
+            lost_item=self.lost_item,
+            claimant_answer="Please return my phone, I lost it yesterday and it is very important to me.",
+            claimant_notes="It was a gift."
+        )
+        self.assertFalse(res["is_verified"])
+        self.assertLess(res["match_score"], 40.0)
+        self.assertEqual(res["confidence"], "LOW")
+
+    def test_dynamic_question_adaptive_flow(self):
+        from claims.ai_verifier import generate_ai_interview_question
+        # Question 1 asks challenge question
+        q1 = generate_ai_interview_question(self.lost_item, [], 1)
+        self.assertIn("wallpaper", q1.lower())
+
+        # Question 2 asks about wallpaper / contents
+        q2 = generate_ai_interview_question(self.lost_item, [{"role": "user", "content": "Blue case"}], 2)
+        self.assertTrue(len(q2) > 10)
+
+        # Question 6 asks for proof
+        q6 = generate_ai_interview_question(self.lost_item, [], 6)
+        self.assertIn("proof", q6.lower())
 
 

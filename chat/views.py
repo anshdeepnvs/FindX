@@ -132,7 +132,7 @@ def send_message(request, pk):
         claimant_answers_count = convo.messages.filter(sender=request.user).count()
 
         if claimant_answers_count < TOTAL_VERIFICATION_STEPS:
-            # Generate next question (Step 2 to 5)
+            # Generate next question (Step 2 to 6)
             next_step = claimant_answers_count + 1
             history = [
                 {'role': 'user' if m.sender else 'assistant', 'content': m.content}
@@ -159,7 +159,7 @@ def send_message(request, pk):
             })
 
         else:
-            # All 5 questions answered -> Run AI Ownership Verification
+            # Verification questions completed -> Run AI Ownership Verification
             history = [
                 {'role': 'user' if m.sender else 'assistant', 'content': m.content}
                 for m in convo.messages.order_by('created_at')
