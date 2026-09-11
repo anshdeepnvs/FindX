@@ -175,52 +175,23 @@ class FindXFlowTests(TestCase):
         self.assertEqual(data1["convo_status"], Conversation.STATUS_AI_VERIFY)
         self.assertEqual(len(data1["messages"]), 2)  # User answer + AI Question 2
 
-        # 3. Answer Question 2
+        # 3. Answer Question 2 with matching confidential details -> Verifies early in 2 questions!
         res2 = self.client.post(f"/chat/{convo2.id}/send/", {
             "content": "Inside there is a 500 rupee note and small coin compartment."
         })
         self.assertEqual(res2.status_code, 200)
         data2 = res2.json()
-        self.assertEqual(data2["convo_status"], Conversation.STATUS_AI_VERIFY)
-
-        # 4. Answer Question 3
-        res3 = self.client.post(f"/chat/{convo2.id}/send/", {
-            "content": "Brand is Wildcraft genuine leather."
-        })
-        self.assertEqual(res3.status_code, 200)
-
-        # 5. Answer Question 4
-        res4 = self.client.post(f"/chat/{convo2.id}/send/", {
-            "content": "Lost yesterday evening outside the central library gate around 5 PM."
-        })
-        self.assertEqual(res4.status_code, 200)
-
-        # 6. Answer Question 5 -> Generates Question 6
-        res5 = self.client.post(f"/chat/{convo2.id}/send/", {
-            "content": "Attached with a small brass ring and pen."
-        })
-        self.assertEqual(res5.status_code, 200)
-        data5 = res5.json()
-        self.assertEqual(data5["convo_status"], Conversation.STATUS_AI_VERIFY)
-        self.assertEqual(len(data5["messages"]), 2)  # User answer + AI Question 6
-
-        # 7. Answer Question 6 (Final Step: photo/proof description) -> Triggers AI evaluation!
-        res6 = self.client.post(f"/chat/{convo2.id}/send/", {
-            "content": "I have the purchase invoice and an old photo of the wallet with my library card."
-        })
-        self.assertEqual(res6.status_code, 200)
-        data6 = res6.json()
-        self.assertEqual(data6["convo_status"], Conversation.STATUS_PENDING_FINDER)
+        self.assertEqual(data2["convo_status"], Conversation.STATUS_PENDING_FINDER)
 
         claim2.refresh_from_db()
         convo2.refresh_from_db()
         self.assertTrue(claim2.is_ai_verified)
-        self.assertGreaterEqual(claim2.ai_score, 70.0)
+        self.assertGreaterEqual(claim2.ai_score, 75.0)
         self.assertEqual(claim2.status, OwnershipClaim.STATUS_PENDING)
         self.assertEqual(claim2.handover_otp, "")  # No OTP released yet
         self.assertEqual(convo2.status, Conversation.STATUS_PENDING_FINDER)
 
-        # 8. Finder reviews chat and confirms owner -> releases OTP
+        # 4. Finder reviews chat and confirms owner -> releases OTP
         self.client.login(username="finder", password="password123")
         confirm_res = self.client.post(f"/chat/{convo2.id}/confirm-owner/")
         self.assertRedirects(confirm_res, f"/chat/{convo2.id}/")
@@ -231,6 +202,72 @@ class FindXFlowTests(TestCase):
         self.assertEqual(claim2.status, OwnershipClaim.STATUS_ACCEPTED)
         self.assertEqual(len(claim2.handover_otp), 6)  # OTP released!
         self.assertEqual(convo2.status, Conversation.STATUS_ACTIVE)
+
+    def test_ai_chat_verification_adaptive_needs_more_questions(self):
+        # Create an item requiring multiple questions because claimant gives partial info
+        lost3 = Item.objects.create(
+            reporter=self.owner,
+            item_type="LOST",
+            title="Lost Laptop Backpack",
+            category=self.cat,
+            city="Delhi",
+            date_event=timezone.now().date(),
+            description="Lost gray backpack.",
+            status="ACTIVE"
+        )
+        PrivateDetail.objects.create(
+            item=lost3,
+            hidden_info="Secret compartment with silver macbook air and purple keychain.",
+            challenge_question="What is hidden inside the secret compartment?",
+        )
+        found3 = Item.objects.create(
+            reporter=self.finder,
+            item_type="FOUND",
+            title="Found Backpack",
+            category=self.cat,
+            city="Delhi",
+            date_event=timezone.now().date(),
+            description="Found gray backpack on bench.",
+            status="ACTIVE"
+        )
+        match3 = Match.objects.create(
+            lost_item=lost3,
+            found_item=found3,
+            final_score=80.0,
+            status="NOTIFIED",
+        )
+
+        self.client.login(username="owner", password="password123")
+        self.client.get(f"/claims/match/{match3.id}/submit/")
+        convo3 = Conversation.objects.get(match=match3)
+
+        # Answer 1: Vague
+        r1 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "It is gray color."})
+        self.assertEqual(r1.json()["convo_status"], Conversation.STATUS_AI_VERIFY)
+
+        # Answer 2: Still partial (not >= 75%)
+        r2 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "It has 3 zippers."})
+        self.assertEqual(r2.json()["convo_status"], Conversation.STATUS_AI_VERIFY)
+
+        # Answer 3: Still partial
+        r3 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "Lost yesterday."})
+        self.assertEqual(r3.json()["convo_status"], Conversation.STATUS_AI_VERIFY)
+
+        # Answer 4: Still partial
+        r4 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "Carried a water bottle."})
+        self.assertEqual(r4.json()["convo_status"], Conversation.STATUS_AI_VERIFY)
+
+        # Answer 5: Still partial -> leads to Question 6
+        r5 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "Has a front organizer."})
+        self.assertEqual(r5.json()["convo_status"], Conversation.STATUS_AI_VERIFY)
+
+        # Answer 6: Provides secret details at step 6
+        r6 = self.client.post(f"/chat/{convo3.id}/send/", {"content": "Secret compartment has silver macbook air and purple keychain."})
+        self.assertEqual(r6.json()["convo_status"], Conversation.STATUS_PENDING_FINDER)
+
+        claim3 = OwnershipClaim.objects.get(match=match3, claimant=self.owner)
+        self.assertTrue(claim3.is_ai_verified)
+        self.assertGreaterEqual(claim3.ai_score, 75.0)
 
     def test_ai_scoring_genuine_owner_fairness(self):
         from claims.ai_verifier import evaluate_claim_ownership

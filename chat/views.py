@@ -130,16 +130,39 @@ def send_message(request, pk):
         )
 
         claimant_answers_count = convo.messages.filter(sender=request.user).count()
+        history = [
+            {'role': 'user' if m.sender else 'assistant', 'content': m.content}
+            for m in convo.messages.order_by('created_at')
+        ]
 
-        if claimant_answers_count < TOTAL_VERIFICATION_STEPS:
-            # Generate next question (Step 2 to 6)
+        # Find proof image (from current upload or previous messages in convo)
+        proof_img = image_file
+        if not proof_img:
+            last_img_msg = convo.messages.filter(image__isnull=False).exclude(image="").last()
+            if last_img_msg:
+                proof_img = last_img_msg.image
+
+        # Adaptive Verification: Check if claimant has already proven ownership (2 to 6 questions)
+        eval_result = None
+        should_conclude = False
+
+        if claimant_answers_count >= 2:
+            eval_result = evaluate_interview_transcript(convo.match.lost_item, history, proof_image=proof_img)
+            # Conclude early if claimant has already provided conclusive matching details (>= 75%)
+            if eval_result.get('is_verified') and eval_result.get('match_score', 0) >= 75.0:
+                should_conclude = True
+
+        # Conclude once maximum questions reached
+        if claimant_answers_count >= TOTAL_VERIFICATION_STEPS:
+            should_conclude = True
+            if eval_result is None:
+                eval_result = evaluate_interview_transcript(convo.match.lost_item, history, proof_image=proof_img)
+
+        if not should_conclude:
+            # Need more details -> Generate next adaptive question tailored to what is missing
             next_step = claimant_answers_count + 1
-            history = [
-                {'role': 'user' if m.sender else 'assistant', 'content': m.content}
-                for m in convo.messages.order_by('created_at')
-            ]
             next_q = generate_ai_interview_question(convo.match.lost_item, history, next_step)
-            ai_msg_text = f"❓ Question {next_step} of {TOTAL_VERIFICATION_STEPS}:\n{next_q}"
+            ai_msg_text = f"❓ Follow-up Question {next_step} (Step {next_step} of up to {TOTAL_VERIFICATION_STEPS}):\n{next_q}"
 
             ai_msg = Message.objects.create(
                 conversation=convo,
@@ -159,21 +182,7 @@ def send_message(request, pk):
             })
 
         else:
-            # Verification questions completed -> Run AI Ownership Verification
-            history = [
-                {'role': 'user' if m.sender else 'assistant', 'content': m.content}
-                for m in convo.messages.order_by('created_at')
-            ]
-
-            # Find proof image (from current upload or previous messages in convo)
-            proof_img = image_file
-            if not proof_img:
-                last_img_msg = convo.messages.filter(image__isnull=False).exclude(image="").last()
-                if last_img_msg:
-                    proof_img = last_img_msg.image
-
-            eval_result = evaluate_interview_transcript(convo.match.lost_item, history, proof_image=proof_img)
-
+            # Verification completed (either early at 2-5 questions or after 6 questions) -> Deliver verdict
             claim, _ = OwnershipClaim.objects.get_or_create(match=convo.match, claimant=request.user)
             claim.status = OwnershipClaim.STATUS_PENDING
             claim.ai_score = eval_result['match_score']
@@ -191,8 +200,9 @@ def send_message(request, pk):
             convo.save(update_fields=['ai_score', 'is_ai_verified', 'status'])
 
             if eval_result['is_verified']:
+                early_note = f" (Verified early in {claimant_answers_count} questions)" if claimant_answers_count < TOTAL_VERIFICATION_STEPS else ""
                 ai_verdict_text = (
-                    f"🎉 AI Verification Assessment: PASSED ({claim.ai_score:.0f}% Match Score)\n\n"
+                    f"🎉 AI Verification Assessment: PASSED ({claim.ai_score:.0f}% Match Score){early_note}\n\n"
                     f"📊 Confidence Level: {claim.ai_confidence}\n"
                     f"💡 AI Analysis: {claim.ai_reasoning}\n\n"
                     f"✅ Ownership Confirmed: Claimant answers matched the confidential parameters with ≥ 70% confidence. "

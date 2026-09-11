@@ -53,8 +53,8 @@ def submit_claim(request, match_id):
         first_msg = (
             f"👋 Hello {request.user.get_full_name_or_username()}! I am FindX's AI Verification Officer.\n\n"
             f"To verify your ownership of \"{match.found_item.title}\" and ensure community safety, "
-            f"I will ask you up to {TOTAL_VERIFICATION_STEPS} confidential verification questions based on item parameters.\n\n"
-            f"❓ Question 1 of {TOTAL_VERIFICATION_STEPS}:\n{q1}"
+            f"I will ask you adaptive verification questions (typically 2 to 6 questions depending on your details) based on item parameters.\n\n"
+            f"❓ Question 1 (of up to {TOTAL_VERIFICATION_STEPS}):\n{q1}"
         )
         Message.objects.create(
             conversation=convo,
@@ -172,14 +172,35 @@ def ai_chat_send(request, match_id):
 
     user_answers_count = convo.messages.filter(sender=request.user).count()
 
-    if user_answers_count < TOTAL_VERIFICATION_STEPS:
+    history = [
+        {'role': 'user' if m.sender else 'assistant', 'content': m.content}
+        for m in convo.messages.order_by('created_at')
+    ]
+    proof_img = image_file
+    if not proof_img:
+        last_img_msg = convo.messages.filter(image__isnull=False).exclude(image="").last()
+        if last_img_msg:
+            proof_img = last_img_msg.image
+
+    eval_result = None
+    should_conclude = False
+
+    # Adaptive Check: Early exit if user has provided at least 2 conclusive answers
+    if user_answers_count >= 2:
+        eval_result = evaluate_interview_transcript(match.lost_item, history, proof_image=proof_img)
+        if eval_result.get('is_verified') and eval_result.get('match_score', 0) >= 75.0:
+            should_conclude = True
+
+    # Exit if maximum steps reached
+    if user_answers_count >= TOTAL_VERIFICATION_STEPS:
+        should_conclude = True
+        if eval_result is None:
+            eval_result = evaluate_interview_transcript(match.lost_item, history, proof_image=proof_img)
+
+    if not should_conclude:
         next_step = user_answers_count + 1
-        history = [
-            {'role': 'user' if m.sender else 'assistant', 'content': m.content}
-            for m in convo.messages.order_by('created_at')
-        ]
         next_q = generate_ai_interview_question(match.lost_item, history, next_step)
-        ai_response_text = f"❓ Question {next_step} of {TOTAL_VERIFICATION_STEPS}:\n{next_q}"
+        ai_response_text = f"❓ Follow-up Question {next_step} (Step {next_step} of up to {TOTAL_VERIFICATION_STEPS}):\n{next_q}"
 
         ai_msg = Message.objects.create(
             conversation=convo,
@@ -197,19 +218,7 @@ def ai_chat_send(request, match_id):
         })
 
     else:
-        # Verification questions answered -> Perform AI evaluation
-        history = [
-            {'role': 'user' if m.sender else 'assistant', 'content': m.content}
-            for m in convo.messages.order_by('created_at')
-        ]
-        proof_img = image_file
-        if not proof_img:
-            last_img_msg = convo.messages.filter(image__isnull=False).exclude(image="").last()
-            if last_img_msg:
-                proof_img = last_img_msg.image
-
-        eval_result = evaluate_interview_transcript(match.lost_item, history, proof_image=proof_img)
-
+        # Verification questions answered / verified early -> Deliver verdict
         claim.ai_score = eval_result['match_score']
         claim.ai_confidence = eval_result['confidence']
         claim.ai_reasoning = eval_result['reasoning']
@@ -226,8 +235,9 @@ def ai_chat_send(request, match_id):
         convo.save(update_fields=['ai_score', 'is_ai_verified', 'status'])
 
         if eval_result['is_verified']:
+            early_note = f" (Verified early in {user_answers_count} questions)" if user_answers_count < TOTAL_VERIFICATION_STEPS else ""
             ai_verdict_msg = (
-                f"🎉 Verification Completed Successfully!\n\n"
+                f"🎉 Verification Completed Successfully!{early_note}\n\n"
                 f"📊 AI Ownership Match Score: {claim.ai_score:.0f}%\n"
                 f"🔒 Confidence Level: {claim.ai_confidence}\n\n"
                 f"💡 AI Analysis: {claim.ai_reasoning}\n\n"
