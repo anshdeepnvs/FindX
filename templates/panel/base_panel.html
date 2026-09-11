@@ -14,8 +14,9 @@
   <!-- Thin Top Bar -->
   <header class="navbar" style="position:sticky;top:0;z-index:100;">
     <div class="container nav-wrapper">
-      <a href="{% url 'core:home' %}" class="nav-brand">
-        🔍 <span>Lost &amp; Found</span> <span class="shield" style="font-size:0.75rem;background:#1e293b;color:#94a3b8;padding:2px 8px;border-radius:20px;margin-left:6px;">⚙️ Admin Panel</span>
+      <a href="{% url 'core:home' %}" class="nav-brand" style="display:flex;align-items:center;gap:10px;">
+        <img src="{% static 'img/logo.png' %}" alt="FindX Logo" style="height:32px;width:auto;object-fit:contain;">
+        <span class="shield" style="font-size:0.75rem;background:#1e293b;color:#94a3b8;padding:2px 8px;border-radius:20px;margin-left:4px;">⚙️ Admin Panel</span>
       </a>
       <nav>
         <ul class="nav-links">
