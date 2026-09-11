@@ -27,3 +27,36 @@ def mark_read(request, pk):
 def mark_all_read(request):
     request.user.notifications.filter(is_read=False).update(is_read=True)
     return redirect('notifications:list')
+
+
+@login_required
+def unread_latest(request):
+    """
+    Returns unread official notifications for the current user.
+    Excludes individual CHAT messages so email and browser notifications
+    are reserved strictly for official platform events (MATCH, CLAIM, RETURN, SYSTEM).
+    """
+    since_id = request.GET.get('since_id')
+    qs = request.user.notifications.filter(is_read=False).exclude(notif_type=Notification.TYPE_CHAT)
+    if since_id and since_id.isdigit():
+        qs = qs.filter(id__gt=int(since_id))
+
+    latest = [
+        {
+            'id': n.id,
+            'type': n.notif_type,
+            'title': n.title,
+            'body': n.body,
+            'link': n.link or '/notifications/',
+            'icon': n.icon,
+            'created_at': n.created_at.strftime('%I:%M %p'),
+        }
+        for n in qs.order_by('id')[:10]
+    ]
+
+    total_unread = request.user.notifications.filter(is_read=False).count()
+
+    return JsonResponse({
+        'unread_count': total_unread,
+        'official_notifications': latest,
+    })

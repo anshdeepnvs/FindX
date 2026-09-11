@@ -40,7 +40,7 @@ def send_ai_verified_claim_email(finder, claimant, found_item, match, claim, con
         f"AI Verification Match Score: {score_display}\n\n"
         f"Please open the secure chat to review the claimant's answers and uploaded proof:\n"
         f"{chat_link}\n\n"
-        f"Once you review and confirm the owner in chat, a secure Handover OTP will be generated for safe in-person exchange.\n\n"
+        f"Once you review and accept the claimant as a probable owner in chat, direct chat will unlock to coordinate the return and a safe Handover OTP will be issued for in-person verification.\n\n"
         f"Best regards,\n"
         f"FindX Community Safety Team\n"
         f"support.findx@gmail.com\n"
@@ -109,7 +109,7 @@ def send_ai_verified_claim_email(finder, claimant, found_item, match, claim, con
           <tr>
             <td align="center">
               <a href="{chat_link}" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 8px; font-weight: bold; font-size: 14px;">
-                Review Chat &amp; Confirm Owner
+                Review Chat &amp; Coordinate Return
               </a>
             </td>
           </tr>
@@ -117,7 +117,7 @@ def send_ai_verified_claim_email(finder, claimant, found_item, match, claim, con
 
         <!-- Security Note -->
         <div style="background-color: #f1f5f9; border-radius: 8px; padding: 14px 16px; border: 1px solid #e2e8f0; font-size: 12px; color: #475569; line-height: 1.5; margin-top: 24px;">
-          <strong style="color: #1e293b;">Next Step:</strong> After you verify and accept the owner in chat, a 6-digit Handover OTP will be issued to protect your exchange.
+          <strong style="color: #1e293b;">Next Step:</strong> After you accept the claimant as a probable owner in chat, direct messaging unlocks to coordinate the return and a 6-digit Handover OTP will be issued for in-person verification.
         </div>
 
         <!-- Transactional Footer -->

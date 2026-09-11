@@ -8,11 +8,34 @@
   <div class="flex items-center justify-between pb-6 border-b border-slate-200 mb-6">
     <div>
       <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Notifications</h1>
-      <p class="text-xs text-slate-500 mt-1">Updates on AI matches, claims, chat messages, and return confirmations.</p>
+      <p class="text-xs text-slate-500 mt-1">Updates on AI matches, claims, and return confirmations.</p>
     </div>
     <a href="{% url 'notifications:mark_all_read' %}" class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors">
       Mark all read
     </a>
+  </div>
+
+  <!-- Browser Push Notification Setting Card -->
+  <div class="mb-6 p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex items-start sm:items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-brand-700 text-white flex items-center justify-center text-lg shadow-sm flex-shrink-0">
+        🔔
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="text-sm font-bold text-slate-900">Device Push Notifications</h3>
+          <span class="notif-permission-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+            Checking...
+          </span>
+        </div>
+        <p class="text-xs text-slate-500 mt-0.5">Receive native system alerts on your PC and mobile browser for official updates (AI matches, claim reviews, and returns).</p>
+      </div>
+    </div>
+    <div class="flex-shrink-0">
+      <button type="button" onclick="requestFindXNotificationPermission()" class="notif-enable-btn w-full sm:w-auto px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:scale-105">
+        🔔 Enable Notifications
+      </button>
+    </div>
   </div>
 
   <!-- Notification Feed -->

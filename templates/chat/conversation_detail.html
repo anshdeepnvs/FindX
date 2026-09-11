@@ -82,23 +82,23 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="space-y-1">
           <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase tracking-wide">
-            <span>🛡️</span> Action Required: Confirm Genuine Owner
+            <span>🛡️</span> Action Required: Review Probable Owner Claim
           </div>
           <h3 class="text-sm font-extrabold text-slate-900">
-            Claimant has completed AI Verification with an AI Score of <span class="text-emerald-700">{{ conversation.ai_score|floatformat:0 }}%</span>
+            Claimant has completed AI Verification with an AI Score of <span class="text-emerald-700">{{ conversation.ai_score|floatformat:0 }}%</span> (Probable Owner)
           </h3>
           <p class="text-xs text-slate-600 max-w-xl leading-relaxed">
-            Review the 5-step interview transcript and any uploaded proof photos in the chat below.
-            When you confirm, FindX will release the safe 6-digit Handover OTP for your in-person exchange.
+            Review the interview transcript and any uploaded proof in the chat below.
+            Accepting the claim opens direct chat to coordinate the safe return and verify physical details in person with the probable owner.
           </p>
         </div>
 
         <div class="flex items-center gap-2 flex-shrink-0">
           <!-- Confirm & Accept Form -->
-          <form method="POST" action="{% url 'chat:confirm_owner' conversation.id %}" onsubmit="return confirm('Are you sure you want to confirm and accept this user as the genuine owner? This will generate the Handover OTP.');">
+          <form method="POST" action="{% url 'chat:confirm_owner' conversation.id %}" onsubmit="return confirm('Accept this user as a probable owner to unlock direct chat and coordinate the return?');">
             {% csrf_token %}
             <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 hover:scale-105">
-              <span>✓ Confirm &amp; Accept Owner</span>
+              <span>✓ Accept as Probable Owner &amp; Chat</span>
             </button>
           </form>
 
@@ -117,8 +117,8 @@
       <div class="flex items-center gap-2.5">
         <span class="text-xl">⏳</span>
         <div>
-          <strong class="font-bold">AI Verification Complete (Score: {{ conversation.ai_score|floatformat:0 }}%)!</strong>
-          <p class="text-[11px] text-cyan-800 mt-0.5">The finder has been notified to review your verification interview and confirm the handover. You will receive your Handover OTP once confirmed.</p>
+          <strong class="font-bold">AI Verification Complete (Score: {{ conversation.ai_score|floatformat:0 }}% — Probable Owner)!</strong>
+          <p class="text-[11px] text-cyan-800 mt-0.5">The finder has been notified to review your verification interview and unlock direct chat to coordinate the safe return. You will receive your Handover OTP once connected.</p>
         </div>
       </div>
     </div>
@@ -151,11 +151,11 @@
         {% else %}
           <div class="space-y-1">
             <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold uppercase">
-              <span>🤝</span> Handover Accepted
+              <span>🤝</span> Direct Chat Connected (Probable Owner)
             </div>
-            <h4 class="text-sm font-bold text-slate-900">Coordinate Handover with {{ other.get_full_name_or_username }}</h4>
+            <h4 class="text-sm font-bold text-slate-900">Coordinate Return with {{ other.get_full_name_or_username }}</h4>
             <p class="text-[11px] text-slate-600 max-w-lg leading-relaxed">
-              Arrange a safe, public meeting spot. When you meet the owner, ask them for their 6-digit Handover OTP before handing over the item.
+              Arrange a safe, public meeting spot. Verify the item in person and ask for their 6-digit Handover OTP before handing over the item.
             </p>
           </div>
           <div class="flex-shrink-0">

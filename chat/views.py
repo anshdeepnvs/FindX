@@ -205,8 +205,8 @@ def send_message(request, pk):
                     f"🎉 AI Verification Assessment: PASSED ({claim.ai_score:.0f}% Match Score){early_note}\n\n"
                     f"📊 Confidence Level: {claim.ai_confidence}\n"
                     f"💡 AI Analysis: {claim.ai_reasoning}\n\n"
-                    f"✅ Ownership Confirmed: Claimant answers matched the confidential parameters with ≥ 70% confidence. "
-                    f"The Finder ({convo.participant_b.get_full_name_or_username()}) has been notified to review this interview and confirm the handover."
+                    f"✅ High Probability Match: Claimant answers matched confidential vault parameters with ≥ 70% confidence. "
+                    f"The claimant is identified as a probable owner. The Finder ({convo.participant_b.get_full_name_or_username()}) has been notified to review this interview and unlock direct chat to coordinate the safe return."
                 )
                 ai_msg = Message.objects.create(
                     conversation=convo,
@@ -230,15 +230,15 @@ def send_message(request, pk):
                 notify_user(
                     user=convo.participant_b,
                     notif_type='CLAIM',
-                    title=f'🎉 Genuine Owner Verified by AI for "{convo.match.found_item.title}"!',
-                    body=f'{request.user.get_full_name_or_username()} scored {claim.ai_score:.0f}% in AI verification. Please review the chat and confirm handover.',
+                    title=f'🔔 Probable Owner Match ({claim.ai_score:.0f}%) for "{convo.match.found_item.title}"',
+                    body=f'{request.user.get_full_name_or_username()} matched confidential details. Review chat to coordinate return.',
                     link=f'/chat/{convo.id}/',
                 )
                 notify_user(
                     user=request.user,
                     notif_type='CLAIM',
-                    title=f'🎉 AI Verified Your Ownership ({claim.ai_score:.0f}%)!',
-                    body='You passed AI verification! The finder has been invited to review this interview and confirm the handover.',
+                    title=f'🔔 Probable Owner Match Verified ({claim.ai_score:.0f}%)!',
+                    body='You passed AI verification as a probable owner! The finder has been invited to review and unlock chat to coordinate return.',
                     link=f'/chat/{convo.id}/',
                 )
 
@@ -370,9 +370,11 @@ def finder_confirm_owner(request, pk):
         sender=None,
         message_type='SYSTEM',
         content=(
-            f"🤝 Handover Approved! {finder_name} (Finder) has verified and confirmed {owner_name} as the genuine owner.\n\n"
-            f"🔐 The safe 6-digit Handover OTP has been released to the owner. "
-            f"You can now coordinate a safe public meeting place right here!"
+            f"🤝 Direct Chat Connected! {finder_name} (Finder) has reviewed the verification details and accepted chat with {owner_name} as a probable owner of the item.\n\n"
+            f"💬 You can now chat directly with the finder to coordinate the safe return of the item. "
+            f"Please inspect and verify physical item details in person at a safe public location before completing the handover.\n\n"
+            f"🔐 Handover OTP: A 6-digit verification code has been released to the probable owner. "
+            f"The finder must ask for and verify this OTP only during the actual physical return."
         ),
     )
 
@@ -380,12 +382,12 @@ def finder_confirm_owner(request, pk):
     notify_user(
         user=convo.participant_a,
         notif_type='CLAIM',
-        title='🎉 Finder Confirmed Your Ownership!',
-        body=f'{finder_name} has accepted your claim! Your Handover OTP is {otp}. Coordinate in chat now.',
+        title='💬 Finder Accepted Chat with You!',
+        body=f'{finder_name} accepted you as a probable owner. Your Handover OTP is {otp}. Coordinate the return in chat.',
         link=f'/chat/{convo.id}/',
     )
 
-    messages.success(request, f'🎉 You confirmed {owner_name} as the owner! The Handover OTP has been issued.')
+    messages.success(request, f'💬 Direct chat opened with {owner_name} (Probable Owner). You can now coordinate the return.')
     return redirect('chat:conversation_detail', pk=pk)
 
 

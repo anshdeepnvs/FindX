@@ -119,8 +119,8 @@ def submit_claim(request, match_id):
             notify_user(
                 user=match.found_item.reporter,
                 notif_type='CLAIM',
-                title=f'🎉 Genuine Owner Verified by AI for "{match.found_item.title}"!',
-                body=f'{request.user.get_full_name_or_username()} scored {claim.ai_score:.0f}% in AI verification. Please review in chat.',
+                title=f'🔔 Probable Owner Match ({claim.ai_score:.0f}%) for "{match.found_item.title}"',
+                body=f'{request.user.get_full_name_or_username()} scored {claim.ai_score:.0f}% in AI verification. Review in chat to coordinate return.',
                 link=f'/chat/{convo.id}/',
             )
 
@@ -241,8 +241,8 @@ def ai_chat_send(request, match_id):
                 f"📊 AI Ownership Match Score: {claim.ai_score:.0f}%\n"
                 f"🔒 Confidence Level: {claim.ai_confidence}\n\n"
                 f"💡 AI Analysis: {claim.ai_reasoning}\n\n"
-                f"✅ Ownership Confirmed: Your score meets the 70% threshold. "
-                f"The finder has been notified and invited to review this chat transcript and confirm the handover."
+                f"✅ High Probability Match: Your score meets the 70% threshold. You are identified as a probable owner. "
+                f"The finder has been notified to review this interview and unlock direct chat to coordinate the safe return."
             )
             Message.objects.create(
                 conversation=convo,
@@ -264,8 +264,8 @@ def ai_chat_send(request, match_id):
             notify_user(
                 user=match.found_item.reporter,
                 notif_type='CLAIM',
-                title=f'🎉 Genuine Owner Verified by AI for "{match.found_item.title}"!',
-                body=f'{request.user.get_full_name_or_username()} scored {claim.ai_score:.0f}% in AI verification. Please review in chat.',
+                title=f'🔔 Probable Owner Match ({claim.ai_score:.0f}%) for "{match.found_item.title}"',
+                body=f'{request.user.get_full_name_or_username()} scored {claim.ai_score:.0f}% in AI verification. Review in chat to coordinate return.',
                 link=f'/chat/{convo.id}/',
             )
 
