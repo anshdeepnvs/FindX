@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from django.db.models import Q
 from .models import Item, Category, PrivateDetail
 from .forms import ReportItemForm, PrivateDetailForm, ItemSearchForm
@@ -44,6 +45,14 @@ def item_detail(request, pk):
 
     matches = []
     if is_owner:
+        # Guarantee fresh matches for the owner
+        if item.is_active and item.status in (Item.STATUS_ACTIVE, Item.STATUS_MATCH_FOUND):
+            try:
+                from matching.services import run_matching
+                run_matching(item)
+            except Exception:
+                pass
+
         if item.item_type == 'LOST':
             matches = item.matches_as_lost.filter(final_score__gte=40).order_by('-final_score')[:5]
         else:
@@ -53,11 +62,14 @@ def item_detail(request, pk):
     if is_owner:
         private = getattr(item, 'private_detail', None)
 
+    is_new = request.GET.get('created') == '1'
+
     ctx = {
         'item': item,
         'is_owner': is_owner,
         'matches': matches,
         'private': private,
+        'is_new': is_new,
     }
     return render(request, 'items/detail.html', ctx)
 
@@ -75,8 +87,20 @@ def report_lost(request):
             pvt = pvt_form.save(commit=False)
             pvt.item = item
             pvt.save()
-            messages.success(request, f'Your lost item report for "{item.title}" has been created. FindX will now search for potential matches!')
-            return redirect('items:item_detail', pk=item.pk)
+
+            # Synchronously run matching so matches exist immediately on redirect
+            match_count = 0
+            try:
+                from matching.services import run_matching
+                match_count = run_matching(item)
+            except Exception:
+                pass
+
+            if match_count > 0:
+                messages.success(request, f'Your lost item report for "{item.title}" has been created. 🎉 FindX detected {match_count} potential match(es)!')
+            else:
+                messages.success(request, f'Your lost item report for "{item.title}" has been created. FindX will continuously scan for matches!')
+            return redirect(f'/items/{item.pk}/?created=1')
     else:
         form     = ReportItemForm()
         pvt_form = PrivateDetailForm()
@@ -99,8 +123,20 @@ def report_found(request):
                 pvt = pvt_form.save(commit=False)
                 pvt.item = item
                 pvt.save()
-            messages.success(request, f'Your found item report for "{item.title}" has been posted. If we find a matching lost report, we will notify the owner!')
-            return redirect('items:item_detail', pk=item.pk)
+
+            # Synchronously run matching so matches exist immediately on redirect
+            match_count = 0
+            try:
+                from matching.services import run_matching
+                match_count = run_matching(item)
+            except Exception:
+                pass
+
+            if match_count > 0:
+                messages.success(request, f'Your found item report for "{item.title}" has been posted. 🎉 Found {match_count} matching lost item report(s)!')
+            else:
+                messages.success(request, f'Your found item report for "{item.title}" has been posted. If we find a matching lost report, we will notify the owner!')
+            return redirect(f'/items/{item.pk}/?created=1')
     else:
         form = ReportItemForm()
         pvt_form = PrivateDetailForm()
@@ -118,3 +154,35 @@ def item_close(request, pk):
         messages.info(request, f'Item "{item.title}" has been closed.')
         return redirect('core:dashboard')
     return render(request, 'items/confirm_close.html', {'item': item})
+
+
+def item_matches_status(request, pk):
+    """AJAX endpoint that returns current matches for an item to allow real-time UI refresh."""
+    item = get_object_or_404(Item, pk=pk)
+    if not request.user.is_authenticated or request.user != item.reporter:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    try:
+        from matching.services import run_matching
+        run_matching(item)
+    except Exception:
+        pass
+
+    if item.item_type == 'LOST':
+        matches = item.matches_as_lost.filter(final_score__gte=40).order_by('-final_score')[:5]
+    else:
+        matches = item.matches_as_found.filter(final_score__gte=40).order_by('-final_score')[:5]
+
+    data = [
+        {
+            'id': m.id,
+            'title': m.found_item.title if item.item_type == 'LOST' else m.lost_item.title,
+            'city': m.found_item.city if item.item_type == 'LOST' else m.lost_item.city,
+            'score': round(m.final_score),
+            'status': m.get_status_display(),
+            'review_url': f'/matching/{m.id}/',
+        }
+        for m in matches
+    ]
+    return JsonResponse({'count': len(data), 'matches': data})
+

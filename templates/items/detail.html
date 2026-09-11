@@ -134,18 +134,28 @@
       {% if is_owner %}
         
         <!-- Potential Matches Tab for Owner -->
-        <div class="p-6 rounded-2xl border-2 border-cyan-500/30 bg-gradient-to-tr from-cyan-50/50 to-white shadow-sm space-y-4">
-          <div class="flex items-center justify-between">
+        <div id="ai-matches-container" class="p-6 rounded-2xl border-2 border-cyan-500/30 bg-gradient-to-tr from-cyan-50/50 to-white shadow-sm space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="text-xl">🤖</span>
               <div>
-                <h3 class="text-base font-bold text-slate-900">AI Matches for this Item</h3>
-                <p class="text-xs text-slate-500">Cross-referenced against all opposite-type reports.</p>
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                  AI Matches for this Item
+                  {% if is_new %}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold animate-pulse">Just Scanned</span>
+                  {% endif %}
+                </h3>
+                <p class="text-xs text-slate-500">Cross-referenced against all opposite-type reports using multi-modal AI.</p>
               </div>
             </div>
-            <a href="{% url 'matching:match_list' %}" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">
-              All Matches &rarr;
-            </a>
+            <div class="flex items-center gap-3">
+              <button id="refresh-matches-btn" onclick="checkMatchesStatus()" class="px-2.5 py-1 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-800 text-xs font-bold transition-colors flex items-center gap-1.5">
+                <span>🔄</span> Scan Now
+              </button>
+              <a href="{% url 'matching:match_list' %}" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">
+                All Matches &rarr;
+              </a>
+            </div>
           </div>
 
           {% if matches %}
@@ -228,4 +238,38 @@
   </div>
 
 </div>
+
+{% if is_owner %}
+<script>
+function checkMatchesStatus() {
+  const btn = document.getElementById('refresh-matches-btn');
+  if (btn) btn.innerHTML = '<span>⏳</span> Scanning...';
+  
+  fetch("{% url 'items:item_matches_status' item.id %}")
+    .then(response => response.json())
+    .then(data => {
+      if (data && data.count !== undefined) {
+        const currentCount = {{ matches|length }};
+        if (data.count !== currentCount && data.count > 0) {
+          // If match count increased or updated, reload page to display rich cards
+          window.location.href = "{% url 'items:item_detail' item.id %}";
+        } else {
+          if (btn) {
+            btn.innerHTML = data.count > 0 ? `<span>✅</span> ${data.count} Match(es)` : '<span>🔄</span> No New Matches';
+            setTimeout(() => { if (btn) btn.innerHTML = '<span>🔄</span> Scan Now'; }, 3000);
+          }
+        }
+      }
+    })
+    .catch(() => {
+      if (btn) btn.innerHTML = '<span>🔄</span> Scan Now';
+    });
+}
+
+{% if is_new and not matches %}
+// If this item was just created and no matches appeared yet, poll once after 1.5s to pick up matches
+setTimeout(checkMatchesStatus, 1500);
+{% endif %}
+</script>
+{% endif %}
 {% endblock %}

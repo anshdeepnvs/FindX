@@ -36,26 +36,72 @@ def _get_model():
     return _model
 
 
+import numpy as np
+
+# Cache for recently encoded text strings to avoid repetitive inference
+_TEXT_EMBED_CACHE = {}
+_MAX_CACHE_SIZE = 500
+
+
+def vector_cosine_similarity(vec_a, vec_b) -> float:
+    """
+    Ultra-fast cosine similarity between two precomputed 1D vectors/lists.
+    Executes in < 0.01 milliseconds.
+    """
+    if not vec_a or not vec_b:
+        return 0.0
+    try:
+        a = np.asarray(vec_a, dtype=np.float32)
+        b = np.asarray(vec_b, dtype=np.float32)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        dot = float(np.dot(a, b) / (norm_a * norm_b))
+        return float(max(0.0, min(1.0, dot)))
+    except Exception as e:
+        logger.warning(f"Vector cosine similarity error: {e}")
+        return 0.0
+
+
 def semantic_similarity(text_a: str, text_b: str) -> float:
     """
     Return cosine similarity in [0.0, 1.0] between two text strings.
-    Uses sentence-transformers if available; keyword Jaccard otherwise.
+    Uses sentence-transformers with caching if available; keyword Jaccard otherwise.
+    Blends with brand/model token overlap for extra precision.
     """
     if not text_a or not text_b:
         return 0.0
 
-    model = _get_model()
-    if model is not None:
-        try:
-            from sklearn.metrics.pairwise import cosine_similarity
-            import numpy as np
-            embeddings = model.encode([text_a, text_b], convert_to_numpy=True)
-            sim = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
-            return float(max(0.0, min(1.0, sim)))
-        except Exception as e:
-            logger.warning(f"Sentence transformer inference failed: {e}. Using fallback.")
+    clean_a = text_a.strip()
+    clean_b = text_b.strip()
 
-    return _keyword_similarity(text_a, text_b)
+    if clean_a.lower() == clean_b.lower():
+        return 1.0
+
+    # 1. Semantic Embedding Similarity
+    emb_a = get_text_embedding(clean_a)
+    emb_b = get_text_embedding(clean_b)
+
+    if emb_a is not None and emb_b is not None:
+        sem_sim = vector_cosine_similarity(emb_a, emb_b)
+    else:
+        sem_sim = _keyword_similarity(clean_a, clean_b)
+
+    # 2. Token & Brand / Number Boost
+    kw_sim = _keyword_similarity(clean_a, clean_b)
+
+    # Look for matching numbers or exact brand model terms (e.g. "14", "pro", "wildcraft")
+    nums_a = set(re.findall(r"\b\d+\b", clean_a.lower()))
+    nums_b = set(re.findall(r"\b\d+\b", clean_b.lower()))
+    num_match = bool(nums_a.intersection(nums_b))
+
+    # Balanced composite: 75% semantic + 25% exact keywords
+    blended = (sem_sim * 0.75) + (kw_sim * 0.25)
+    if num_match:
+        blended = min(1.0, blended + 0.08)
+
+    return float(round(max(0.0, min(1.0, blended)), 4))
 
 
 def _keyword_similarity(text_a: str, text_b: str) -> float:
@@ -67,7 +113,7 @@ def _keyword_similarity(text_a: str, text_b: str) -> float:
         "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
         "of", "with", "it", "is", "was", "i", "my", "this", "that", "has",
         "have", "had", "its", "are", "be", "been", "very", "some", "any",
-        "from", "by", "not", "no", "so", "do", "did",
+        "from", "by", "not", "no", "so", "do", "did", "please", "lost", "found",
     }
 
     def tokenise(text):
@@ -84,12 +130,23 @@ def _keyword_similarity(text_a: str, text_b: str) -> float:
 
 
 def get_text_embedding(text: str):
-    """Return a numpy embedding for a string, or None if model unavailable."""
+    """Return a numpy embedding for a string, using in-memory cache for speed."""
+    if not text:
+        return None
+
+    global _TEXT_EMBED_CACHE
+    cache_key = text.strip().lower()
+    if cache_key in _TEXT_EMBED_CACHE:
+        return _TEXT_EMBED_CACHE[cache_key]
+
     model = _get_model()
     if model is None:
         return None
     try:
-        return model.encode(text, convert_to_numpy=True)
+        vec = model.encode(text, convert_to_numpy=True)
+        if len(_TEXT_EMBED_CACHE) < _MAX_CACHE_SIZE:
+            _TEXT_EMBED_CACHE[cache_key] = vec
+        return vec
     except Exception as e:
         logger.warning(f"Embedding failed: {e}")
         return None

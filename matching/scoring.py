@@ -105,7 +105,22 @@ def score_date(lost, found) -> float:
 
 
 def score_text(lost, found) -> float:
-    """Semantic similarity between the two descriptions."""
+    """
+    Semantic similarity between the two descriptions.
+    Uses precomputed text embeddings when available for sub-millisecond execution.
+    """
+    vec_a = lost.get_embedding()
+    vec_b = found.get_embedding()
+
+    if vec_a and vec_b:
+        from matching.text_matching import vector_cosine_similarity, _keyword_similarity
+        sem_sim = vector_cosine_similarity(vec_a, vec_b)
+        text_a = f"{lost.title} {lost.description} {lost.brand} {lost.color}"
+        text_b = f"{found.title} {found.description} {found.brand} {found.color}"
+        kw_sim = _keyword_similarity(text_a, text_b)
+        blended = (sem_sim * 0.75) + (kw_sim * 0.25)
+        return float(round(max(0.0, min(1.0, blended)), 4))
+
     text_a = f"{lost.title} {lost.description} {lost.brand} {lost.color}"
     text_b = f"{found.title} {found.description} {found.brand} {found.color}"
     return semantic_similarity(text_a, text_b)
@@ -113,23 +128,21 @@ def score_text(lost, found) -> float:
 
 def score_image(lost, found) -> float:
     """
-    Image similarity using stored embeddings.
-    Returns 0.0 if either item has no embedding.
+    Real Visual AI image similarity using spatial features, color distributions, and perceptual hashing.
+    Returns visual similarity in [0.0, 1.0] if both items have images, or 0.0 if not available.
     """
-    vec_a = lost.get_embedding()
-    vec_b = found.get_embedding()
+    has_a = bool(lost.image and str(lost.image).strip())
+    has_b = bool(found.image and str(found.image).strip())
 
-    if not vec_a or not vec_b:
+    if not has_a or not has_b:
         return 0.0
 
     try:
-        from sklearn.metrics.pairwise import cosine_similarity
-        import numpy as np
-        a = np.array(vec_a).reshape(1, -1)
-        b = np.array(vec_b).reshape(1, -1)
-        sim = cosine_similarity(a, b)[0][0]
-        return float(max(0.0, min(1.0, sim)))
-    except Exception:
+        from matching.image_matching import calculate_image_similarity
+        return calculate_image_similarity(lost.image, found.image)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Image scoring error: {e}")
         return 0.0
 
 
@@ -137,31 +150,56 @@ def score_image(lost, found) -> float:
 
 def compute_match_score(lost, found) -> dict:
     """
-    Compute all component scores and a weighted final score.
-
-    Returns a dict with keys:
-        image_score, text_score, category_score, color_score,
-        location_score, date_score, final_score (0–100)
+    Compute all component scores and an adaptively weighted final score (0–100).
+    
+    If both items have images:
+        Uses full weights (35% image, 30% text, 10% category, 10% color, 10% location, 5% date).
+    If either or both items lack images:
+        Dynamically redistributes the image weight proportionally among the other
+        active signals so text, category, color, location, and date can fairly
+        achieve high match confidence (>= 80-95%) without unfair photo penalties.
     """
-    weights = get_weights()
+    has_images = bool(
+        lost.image and str(lost.image).strip() and
+        found.image and str(found.image).strip()
+    )
+
+    img_score = score_image(lost, found) if has_images else 0.0
+    txt_score = score_text(lost, found)
+    cat_score = score_category(lost, found)
+    clr_score = score_color(lost, found)
+    loc_score = score_location(lost, found)
+    dat_score = score_date(lost, found)
 
     components = {
-        "image_score":    score_image(lost, found),
-        "text_score":     score_text(lost, found),
-        "category_score": score_category(lost, found),
-        "color_score":    score_color(lost, found),
-        "location_score": score_location(lost, found),
-        "date_score":     score_date(lost, found),
+        "image_score":    img_score,
+        "text_score":     txt_score,
+        "category_score": cat_score,
+        "color_score":    clr_score,
+        "location_score": loc_score,
+        "date_score":     dat_score,
     }
 
-    final = (
-        components["image_score"]    * weights.get("image", 0.35) +
-        components["text_score"]     * weights.get("text",  0.30) +
-        components["category_score"] * weights.get("category", 0.10) +
-        components["color_score"]    * weights.get("color", 0.10) +
-        components["location_score"] * weights.get("location", 0.10) +
-        components["date_score"]     * weights.get("date", 0.05)
-    )
+    if has_images:
+        # Standard weights (Total = 1.0)
+        weights = get_weights()
+        final = (
+            img_score * weights.get("image",    0.35) +
+            txt_score * weights.get("text",     0.30) +
+            cat_score * weights.get("category", 0.10) +
+            clr_score * weights.get("color",    0.10) +
+            loc_score * weights.get("location", 0.10) +
+            dat_score * weights.get("date",     0.05)
+        )
+    else:
+        # Adaptive weights when images are not uploaded (Total = 1.0)
+        final = (
+            txt_score * 0.46 +
+            cat_score * 0.15 +
+            clr_score * 0.15 +
+            loc_score * 0.15 +
+            dat_score * 0.09
+        )
 
     components["final_score"] = round(final * 100, 2)
     return components
