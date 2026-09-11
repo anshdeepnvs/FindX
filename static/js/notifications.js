@@ -9,8 +9,9 @@
   var swRegistration = null;
   var pollInterval = null;
   var lastSeenId = parseInt(localStorage.getItem('findx_last_notif_id') || '0', 10);
+  var isInitialized = localStorage.getItem('findx_notif_initialized') === '1';
 
-  // Initialize Service Worker
+  // Initialize Service Worker for background push / mobile devices
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/sw.js').then(function (reg) {
       swRegistration = reg;
@@ -30,6 +31,32 @@
     return Notification.permission;
   }
 
+  // Subtle web audio chime for notifications (zero external files required)
+  function playNotificationChime() {
+    try {
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      var ctx = new AudioContext();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.09); // A5
+
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {
+      // Audio context might be restricted before user gesture
+    }
+  }
+
   // Request notification permission from user
   window.requestFindXNotificationPermission = function (callback) {
     if (!isSupported()) {
@@ -42,16 +69,20 @@
       updateUIStatus(permission);
 
       if (permission === 'granted') {
+        playNotificationChime();
+
         // Show welcome confirmation notification
         showSystemNotification({
           title: '🔔 FindX Notifications Enabled!',
-          body: 'You will receive real-time official alerts on this device when matches or claims update.',
+          body: 'You will receive real-time alerts on this device when matches, claims, or chat messages arrive.',
           link: '/notifications/'
         });
 
-        // Hide prompt banner if present
+        // Hide prompt banners
         var banner = document.getElementById('notifPermissionBanner');
         if (banner) banner.style.display = 'none';
+        var chatBanner = document.getElementById('chatNotifPromptBar');
+        if (chatBanner) chatBanner.style.display = 'none';
 
         // Start polling immediately
         startPolling();
@@ -62,8 +93,14 @@
   };
 
   // Show a native browser notification (Mobile & PC)
+  window.showFindXNotification = function (data) {
+    showSystemNotification(data);
+  };
+
   function showSystemNotification(data) {
     if (!isSupported() || Notification.permission !== 'granted') return;
+
+    playNotificationChime();
 
     var title = data.title || 'FindX Notification';
     var options = {
@@ -75,18 +112,19 @@
       vibrate: [200, 100, 200]
     };
 
-    if (swRegistration && swRegistration.showNotification) {
-      swRegistration.showNotification(title, options);
-    } else {
-      try {
-        var n = new Notification(title, options);
-        n.onclick = function () {
-          window.focus();
-          if (data.link) window.location.href = data.link;
-          n.close();
-        };
-      } catch (e) {
-        console.log('Desktop notification error:', e);
+    // On Desktop browsers (Chrome, Edge, Firefox), new Notification() triggers native OS toast directly
+    try {
+      var n = new Notification(title, options);
+      n.onclick = function () {
+        window.focus();
+        if (data.link) window.location.href = data.link;
+        n.close();
+      };
+      return;
+    } catch (e) {
+      // On mobile / Android, fallback to Service Worker showNotification
+      if (swRegistration && swRegistration.showNotification) {
+        swRegistration.showNotification(title, options);
       }
     }
   }
@@ -148,7 +186,7 @@
     }
   }
 
-  // Poll for new official notifications (MATCH, CLAIM, RETURN, SYSTEM)
+  // Poll for new notifications (MATCH, CLAIM, RETURN, CHAT, SYSTEM)
   function pollNotifications() {
     var url = '/notifications/unread-latest/?since_id=' + (lastSeenId || 0);
 
@@ -165,23 +203,37 @@
           updateBellBadge(data.unread_count);
         }
 
-        // Fire system notification for each newly arrived official notification
-        if (data.official_notifications && data.official_notifications.length > 0) {
-          data.official_notifications.forEach(function (item) {
-            if (item.id > lastSeenId) {
-              lastSeenId = item.id;
-              localStorage.setItem('findx_last_notif_id', String(lastSeenId));
+        var items = data.notifications || data.official_notifications || [];
+        if (!items || items.length === 0) return;
 
-              // Deliver native browser notification
-              showSystemNotification({
-                id: item.id,
-                title: item.title,
-                body: item.body,
-                link: item.link
-              });
-            }
+        // First run: sync latest ID without firing notifications for old messages
+        if (!isInitialized) {
+          isInitialized = true;
+          localStorage.setItem('findx_notif_initialized', '1');
+          var maxId = lastSeenId;
+          items.forEach(function (it) {
+            if (it.id > maxId) maxId = it.id;
           });
+          lastSeenId = maxId;
+          localStorage.setItem('findx_last_notif_id', String(lastSeenId));
+          return;
         }
+
+        // Fire system notification for each new notification
+        items.forEach(function (item) {
+          if (item.id > lastSeenId) {
+            lastSeenId = item.id;
+            localStorage.setItem('findx_last_notif_id', String(lastSeenId));
+
+            // Deliver native browser notification
+            showSystemNotification({
+              id: item.id,
+              title: item.title,
+              body: item.body,
+              link: item.link
+            });
+          }
+        });
       })
       .catch(function (err) {
         // Silently ignore network hiccup during background poll
@@ -190,9 +242,9 @@
 
   function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
-    // Poll initially after 2 seconds, then every 25 seconds
-    setTimeout(pollNotifications, 2000);
-    pollInterval = setInterval(pollNotifications, 25000);
+    // Poll quickly (every 5 seconds) so chat messages appear in real time on PC & mobile
+    setTimeout(pollNotifications, 1000);
+    pollInterval = setInterval(pollNotifications, 5000);
   }
 
   // On page load

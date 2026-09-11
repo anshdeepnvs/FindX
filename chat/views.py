@@ -76,6 +76,7 @@ def conversation_detail(request, pk):
 
     # Mark incoming messages as read (exclude own and system/AI)
     convo.messages.filter(is_read=False).exclude(sender=request.user).exclude(is_ai=True).update(is_read=True)
+    request.user.notifications.filter(notif_type='CHAT', link=f"/chat/{convo.id}/", is_read=False).update(is_read=True)
 
     msgs = convo.messages.select_related('sender').order_by('created_at')
     other = convo.other_participant(request.user)
@@ -284,6 +285,20 @@ def send_message(request, pk):
         image=image_file,
         message_type='IMAGE' if (image_file and not content) else 'TEXT',
     )
+
+    # Notify the other participant (creates in-app & device notification, NO email)
+    other_user = convo.other_participant(request.user)
+    if other_user:
+        sender_name = request.user.get_full_name_or_username()
+        preview = (content[:80] + "...") if len(content) > 80 else (content or "Sent an image")
+        notify_user(
+            user=other_user,
+            notif_type=Notification.TYPE_CHAT,
+            title=f"💬 New message from {sender_name}",
+            body=preview,
+            link=f"/chat/{convo.id}/",
+        )
+
     return JsonResponse({
         'messages': [_serialize_message(msg, request.user)],
         'convo_status': convo.status,
@@ -303,6 +318,8 @@ def poll_messages(request, pk):
 
     # Mark as read for this user
     new_msgs.exclude(sender=request.user).exclude(is_ai=True).update(is_read=True)
+    if new_msgs.exists():
+        request.user.notifications.filter(notif_type='CHAT', link=f"/chat/{convo.id}/", is_read=False).update(is_read=True)
 
     data = [_serialize_message(m, request.user) for m in new_msgs]
     return JsonResponse({

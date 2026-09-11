@@ -15,7 +15,7 @@ class NotificationAPITests(TestCase):
             is_email_verified=True,
         )
 
-    def test_unread_latest_filters_chat_messages(self):
+    def test_unread_latest_includes_chat_and_official_messages(self):
         self.client.login(username="testuser", password="password123")
 
         # Create official notifications
@@ -33,7 +33,7 @@ class NotificationAPITests(TestCase):
             body="Your claim is being reviewed.",
             link="/claims/1/",
         )
-        # Create a chat notification (should be excluded from browser push)
+        # Create a chat notification (now included in browser push so user gets alerted on PC/mobile)
         n3 = Notification.objects.create(
             user=self.user,
             notif_type=Notification.TYPE_CHAT,
@@ -46,12 +46,12 @@ class NotificationAPITests(TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["unread_count"], 3)
-        self.assertEqual(len(data["official_notifications"]), 2)
+        self.assertEqual(len(data["notifications"]), 3)
 
-        titles = [item["title"] for item in data["official_notifications"]]
+        titles = [item["title"] for item in data["notifications"]]
         self.assertIn("Potential Match Found", titles)
         self.assertIn("Claim Status Updated", titles)
-        self.assertNotIn("New Chat Message", titles)
+        self.assertIn("New Chat Message", titles)
 
     def test_unread_latest_since_id(self):
         self.client.login(username="testuser", password="password123")

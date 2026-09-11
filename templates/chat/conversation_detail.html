@@ -171,6 +171,17 @@
   <!-- Messages Scroll Area -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[580px] overflow-hidden">
     
+    <!-- PC Desktop Notification Prompt Banner -->
+    <div id="chatNotifPromptBar" class="hidden px-4 py-2.5 bg-gradient-to-r from-cyan-700 via-brand-800 to-cyan-700 text-white flex items-center justify-between text-xs font-medium border-b border-cyan-800 shadow-sm transition-all">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🔔</span>
+        <span>Enable desktop notifications on PC so you receive instant alerts when you get a chat reply!</span>
+      </div>
+      <button type="button" id="enableChatNotifBtn" class="ml-3 px-3 py-1 bg-white text-brand-900 hover:bg-cyan-50 font-bold rounded-lg text-xs shadow transition-all flex-shrink-0">
+        Enable Notifications
+      </button>
+    </div>
+
     <!-- Messages Feed -->
     <div id="messagesBox" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
       
@@ -386,6 +397,33 @@
     });
   }
 
+  // PC Desktop notification prompt logic
+  const notifPromptBar = document.getElementById('chatNotifPromptBar');
+  const enableNotifBtn = document.getElementById('enableChatNotifBtn');
+  if (notifPromptBar && enableNotifBtn && 'Notification' in window) {
+    if (Notification.permission === 'default') {
+      notifPromptBar.classList.remove('hidden');
+    }
+    enableNotifBtn.addEventListener('click', async () => {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          notifPromptBar.classList.add('hidden');
+          if (window.showFindXNotification) {
+            window.showFindXNotification({
+              title: "🔔 Notifications Enabled!",
+              body: "You will now receive desktop notifications for new chat messages."
+            });
+          }
+        } else {
+          notifPromptBar.classList.add('hidden');
+        }
+      } catch (e) {
+        console.error('Notification permission request error:', e);
+      }
+    });
+  }
+
   // Find highest message ID in DOM
   function getLatestId() {
     const msgs = document.querySelectorAll('.message-item');
@@ -571,7 +609,22 @@
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
-          data.messages.forEach(m => renderMessageHtml(m));
+          data.messages.forEach(m => {
+            renderMessageHtml(m);
+            // Trigger PC desktop notification if message is from peer and tab is inactive/background
+            if (!m.is_me && m.sender_id !== currentUserId) {
+              if (document.hidden || !document.hasFocus()) {
+                if (window.showFindXNotification) {
+                  window.showFindXNotification({
+                    id: m.id,
+                    title: `💬 New message from ${m.sender}`,
+                    body: m.content || 'Sent an attachment',
+                    link: `/chat/${convoId}/`
+                  });
+                }
+              }
+            }
+          });
           scrollToBottom();
         }
 

@@ -32,12 +32,13 @@ def mark_all_read(request):
 @login_required
 def unread_latest(request):
     """
-    Returns unread official notifications for the current user.
-    Excludes individual CHAT messages so email and browser notifications
-    are reserved strictly for official platform events (MATCH, CLAIM, RETURN, SYSTEM).
+    Returns unread notifications for the current user.
+    Includes matches, claims, returns, system updates, and chat messages
+    so browser desktop & mobile notifications can alert the user.
+    (Email delivery remains strictly reserved for official notices only.)
     """
     since_id = request.GET.get('since_id')
-    qs = request.user.notifications.filter(is_read=False).exclude(notif_type=Notification.TYPE_CHAT)
+    qs = request.user.notifications.filter(is_read=False)
     if since_id and since_id.isdigit():
         qs = qs.filter(id__gt=int(since_id))
 
@@ -58,5 +59,6 @@ def unread_latest(request):
 
     return JsonResponse({
         'unread_count': total_unread,
+        'notifications': latest,
         'official_notifications': latest,
     })
