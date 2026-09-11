@@ -28,7 +28,10 @@ def _get_model():
             return None
         from sentence_transformers import SentenceTransformer
         logger.info("Loading sentence-transformers model (all-MiniLM-L6-v2)…")
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        try:
+            _model = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+        except Exception:
+            _model = SentenceTransformer("all-MiniLM-L6-v2")
         logger.info("Sentence-transformers model loaded successfully.")
     except Exception as e:
         logger.warning(f"Could not load sentence-transformers model: {e}. Using keyword fallback.")
@@ -48,11 +51,13 @@ def vector_cosine_similarity(vec_a, vec_b) -> float:
     Ultra-fast cosine similarity between two precomputed 1D vectors/lists.
     Executes in < 0.01 milliseconds.
     """
-    if not vec_a or not vec_b:
+    if vec_a is None or vec_b is None:
         return 0.0
     try:
         a = np.asarray(vec_a, dtype=np.float32)
         b = np.asarray(vec_b, dtype=np.float32)
+        if a.size == 0 or b.size == 0:
+            return 0.0
         norm_a = np.linalg.norm(a)
         norm_b = np.linalg.norm(b)
         if norm_a == 0.0 or norm_b == 0.0:
