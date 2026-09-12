@@ -27,6 +27,10 @@ class ReportItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not Category.objects.exists():
+            from .categories_data import auto_seed_categories
+            auto_seed_categories()
+            self.fields['category'].queryset = Category.objects.all()
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'findx-input')
         self.fields['category'].empty_label = 'Select a category'
@@ -59,3 +63,10 @@ class ItemSearchForm(forms.Form):
     type     = forms.ChoiceField(required=False, choices=[('', 'All Types'), ('LOST', 'Lost'), ('FOUND', 'Found')], widget=forms.Select(attrs={'class': 'findx-input'}))
     category = forms.ModelChoiceField(queryset=Category.objects.all(), required=False, empty_label='All Categories', widget=forms.Select(attrs={'class': 'findx-input'}))
     city     = forms.CharField(required=False, widget=forms.TextInput(attrs={'placeholder': 'City', 'class': 'findx-input'}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not Category.objects.exists():
+            from .categories_data import auto_seed_categories
+            auto_seed_categories()
+            self.fields['category'].queryset = Category.objects.all()

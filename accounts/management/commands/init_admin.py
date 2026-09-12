@@ -24,3 +24,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"[OK] Initialized superuser '{username}' successfully."))
         else:
             self.stdout.write(self.style.SUCCESS(f"[OK] Updated superuser '{username}' successfully."))
+
+        # Ensure all default item categories exist
+        from items.categories_data import auto_seed_categories
+        auto_seed_categories()
+        self.stdout.write(self.style.SUCCESS("[OK] Verified default item categories are pre-listed."))
