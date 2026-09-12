@@ -12,6 +12,15 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _is_active_gemini_key(key):
+    """Check if the Gemini API key is configured with a real key and not a demo placeholder."""
+    if not key:
+        return False
+    k = key.strip().lower()
+    placeholders = ("demo", "placeholder", "your_key", "dummy", "sample", "yourdemogemini")
+    return not any(p in k for p in placeholders)
+
+
 def _extract_vault_details(lost_item):
     """Safely extracts private vault information from lost_item or any associated match counterpart."""
     private = getattr(lost_item, "private_detail", None)
@@ -50,8 +59,8 @@ def evaluate_claim_ownership(lost_item, claimant_answer, claimant_notes=""):
 
     gemini_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "").strip()
 
-    # If Gemini API key is provided, attempt Google Gemini evaluation
-    if gemini_key:
+    # If active Gemini API key is provided, attempt Google Gemini evaluation
+    if _is_active_gemini_key(gemini_key):
         try:
             return _evaluate_with_gemini(
                 api_key=gemini_key,
@@ -302,7 +311,7 @@ def generate_ai_interview_question(lost_item, interview_history, question_index=
     category_name = lost_item.category.name.lower() if getattr(lost_item, "category", None) else "item"
 
     gemini_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "").strip()
-    if gemini_key:
+    if _is_active_gemini_key(gemini_key):
         try:
             return _generate_question_with_gemini(
                 api_key=gemini_key,
@@ -461,7 +470,7 @@ def verify_claim_image(lost_item, image_file):
         return {"image_score": 0.0, "is_valid_proof": False, "visual_analysis": "No image provided."}
 
     gemini_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "").strip()
-    if gemini_key:
+    if _is_active_gemini_key(gemini_key):
         try:
             return _verify_image_with_gemini(lost_item, image_file, gemini_key)
         except Exception as e:

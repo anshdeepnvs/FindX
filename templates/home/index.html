@@ -1,155 +1,683 @@
 {% extends "base.html" %}
-{% block title %}FindX | "Lost Today. Found Tomorrow."{% endblock %}
+{% load static %}
+{% block title %}FindX | AI-Powered Lost & Found Platform{% endblock %}
+
+{% block extra_head %}
+<style>
+  @keyframes floatSlow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes floatDelayed {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(8px); }
+  }
+  @keyframes scanline {
+    0% { top: 0%; opacity: 0.85; }
+    50% { opacity: 1; }
+    100% { top: 96%; opacity: 0.85; }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.35); }
+    50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.7); }
+  }
+  .animate-float {
+    animation: floatSlow 4.5s ease-in-out infinite;
+  }
+  .animate-float-delayed {
+    animation: floatDelayed 5.2s ease-in-out infinite 1s;
+  }
+  .animate-scanline {
+    animation: scanline 2.8s ease-in-out infinite alternate;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 3s infinite;
+  }
+  .glass-card {
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .shimmer-text {
+    background: linear-gradient(90deg, #38bdf8 0%, #2dd4bf 50%, #34d399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="relative overflow-hidden bg-gradient-to-b from-brand-900 via-brand-800 to-slate-900 text-white pt-16 pb-24 lg:pt-24 lg:pb-32">
-  <!-- Subtle background glow -->
-  <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-    <!-- Tagline pill -->
-    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-cyan-300 mb-8 backdrop-blur shadow-sm">
-      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-      Next-Gen AI Lost &amp; Found Platform
+<!-- ========================================================================= -->
+<!-- 1. HERO SECTION WITH FUTURISTIC AI SCANNER VISUAL & ANIMATIONS           -->
+<!-- ========================================================================= -->
+<section class="relative overflow-hidden bg-gradient-to-b from-brand-900 via-slate-900 to-brand-900 text-white pt-12 pb-20 lg:pt-20 lg:pb-28">
+  <!-- Glowing Background Ambient Orbs -->
+  <div class="absolute top-10 left-1/4 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+  <div class="absolute bottom-10 right-1/4 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:28px_28px] opacity-10 pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      
+      <!-- Left Column: Copy & Actions (7 cols) -->
+      <div class="lg:col-span-7 text-center lg:text-left space-y-6">
+        
+        <!-- Live AI Status Pill Badge -->
+        <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full glass-card border border-cyan-500/30 text-xs font-semibold text-cyan-300 shadow-md">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400"></span>
+          </span>
+          <span>Next-Gen AI Anti-Scam Recovery Platform</span>
+          <span class="text-cyan-400/60 hidden sm:inline">&bull;</span>
+          <span class="text-slate-300 hidden sm:inline font-normal">Blind Shield Active</span>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
+          Recover What You Lost.<br class="hidden sm:inline" />
+          <span class="shimmer-text">Protected By AI.</span>
+        </h1>
+
+        <!-- Subtitle -->
+        <p class="text-base sm:text-lg text-slate-300 max-w-2xl font-normal leading-relaxed">
+          <strong class="text-white font-semibold">"Lost Today. Found Tomorrow."</strong> FindX uses deep visual matching, sentence embeddings, and encrypted blind-challenge verification to connect rightful owners with honest finders without exposing private secrets to scammers.
+        </p>
+
+        <!-- Primary Action CTA Buttons -->
+        <div class="pt-2 flex flex-col sm:flex-row items-center gap-3.5 justify-center lg:justify-start">
+          <a href="{% url 'items:report_lost' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-sm font-bold rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white shadow-lg shadow-rose-500/30 transition-all transform hover:-translate-y-0.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+            <span>I Lost Something</span>
+          </a>
+
+          <a href="{% url 'items:report_found' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-sm font-bold rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 text-white shadow-lg shadow-emerald-500/30 transition-all transform hover:-translate-y-0.5">
+            <span>🤝</span>
+            <span>I Found Something</span>
+          </a>
+
+          <a href="{% url 'items:item_list' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-semibold rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white backdrop-blur transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span>Browse All</span>
+          </a>
+        </div>
+
+        <!-- Quick Instant Search Bar -->
+        <div class="pt-4 max-w-xl mx-auto lg:mx-0">
+          <form action="{% url 'items:item_list' %}" method="get" class="relative flex items-center">
+            <div class="absolute left-4 text-slate-400 pointer-events-none">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <input type="text" name="q" placeholder="Search by item name, color, landmark, or campus..." class="w-full pl-12 pr-28 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white text-white focus:text-slate-900 border border-white/20 focus:border-cyan-400 placeholder:text-slate-400 outline-none backdrop-blur transition-all text-sm shadow-inner" />
+            <button type="submit" class="absolute right-2 px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-brand-900 font-bold text-xs transition-colors shadow-sm">
+              Search
+            </button>
+          </form>
+
+          <!-- Popular Quick Search Tags -->
+          <div class="mt-2.5 flex items-center gap-2 flex-wrap text-xs text-slate-400 justify-center lg:justify-start">
+            <span class="font-medium text-slate-500">Popular:</span>
+            <a href="{% url 'items:item_list' %}?q=Wallet" class="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/15 text-cyan-300 hover:text-white transition-colors">#Wallet</a>
+            <a href="{% url 'items:item_list' %}?q=Phone" class="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/15 text-cyan-300 hover:text-white transition-colors">#Phone</a>
+            <a href="{% url 'items:item_list' %}?q=Keys" class="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/15 text-cyan-300 hover:text-white transition-colors">#Keys</a>
+            <a href="{% url 'items:item_list' %}?q=Backpack" class="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/15 text-cyan-300 hover:text-white transition-colors">#Backpack</a>
+            <a href="{% url 'items:item_list' %}?q=Laptop" class="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/15 text-cyan-300 hover:text-white transition-colors">#Laptop</a>
+          </div>
+        </div>
+
+        <!-- 3 Core Security Pillars Under Hero -->
+        <div class="pt-4 grid grid-cols-3 gap-3 text-center sm:text-left border-t border-white/10">
+          <div class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="text-cyan-400 text-sm">🔒</span>
+            <span class="font-medium">Blind Vault Details</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="text-emerald-400 text-sm">🤖</span>
+            <span class="font-medium">AI Anti-Scam Shield</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="text-teal-400 text-sm">🔐</span>
+            <span class="font-medium">6-Digit Handover OTP</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Interactive AI Scanner Showcase (5 cols) -->
+      <div class="lg:col-span-5 relative">
+        
+        <!-- Outer Glow Frame -->
+        <div class="relative mx-auto max-w-lg rounded-3xl overflow-hidden shadow-2xl border-2 border-cyan-400/30 bg-slate-900/90 group">
+          
+          <!-- Hero AI Scanner Banner Image -->
+          <div class="relative aspect-[16/10] overflow-hidden">
+            <img src="{% static 'img/hero-ai-scanner.jpg' %}" alt="FindX AI Scanner Mockup" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+            
+            <!-- Animated Laser Scanline Effect -->
+            <div class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] animate-scanline pointer-events-none"></div>
+            
+            <!-- Shaded Top Overlay with Scanning Indicator -->
+            <div class="absolute top-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono glass-card px-3 py-1.5 rounded-xl border border-cyan-500/30 text-cyan-300 shadow-md">
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>NEURAL SCANNER // ACTIVE</span>
+              </span>
+              <span class="text-slate-400">MODEL v2.4</span>
+            </div>
+
+            <!-- Bottom Floating Match Badge -->
+            <div class="absolute bottom-3 left-3 right-3 glass-card p-3 rounded-2xl border border-white/15 flex items-center justify-between shadow-xl">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  🤖
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-white flex items-center gap-1">
+                    <span>Image &amp; Context Correlation</span>
+                  </div>
+                  <div class="text-[10px] text-slate-300">Deep Cosine Similarity Matrix</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-extrabold text-emerald-400">96% Match</div>
+                <div class="text-[9px] text-emerald-200 uppercase tracking-wide">High Confidence</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Scanner Control Bar -->
+          <div class="p-4 bg-slate-900/95 border-t border-white/10 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Zero Public Phone Numbers</span>
+            </div>
+            <div class="text-cyan-400 font-medium">
+              Instant Push Alerts 🔔
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Floating Badge 1 (Top Right) -->
+        <div class="hidden sm:flex absolute -top-4 -right-4 glass-card px-3.5 py-2 rounded-xl border border-cyan-400/40 text-xs font-semibold text-white shadow-xl items-center gap-2 animate-float">
+          <span class="text-base">🛡️</span>
+          <span>Imposter Proof</span>
+        </div>
+
+        <!-- Floating Badge 2 (Bottom Left) -->
+        <div class="hidden sm:flex absolute -bottom-4 -left-4 glass-card px-3.5 py-2 rounded-xl border border-emerald-400/40 text-xs font-semibold text-white shadow-xl items-center gap-2 animate-float-delayed">
+          <span class="text-base">⚡</span>
+          <span>Auto Similarity Ranking</span>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================================================================= -->
+<!-- 2. ANIMATED LIVE STATS STRIP WITH COUNTER NUMBERS                         -->
+<!-- ========================================================================= -->
+<section class="relative -mt-8 z-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    
+    <!-- Stat 1 -->
+    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xl shadow-slate-900/5 hover:-translate-y-1 transition-all duration-300 group">
+      <div class="flex items-center justify-between">
+        <span class="text-2xl">📦</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-brand-50 text-brand-700">Reported</span>
+      </div>
+      <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-3 counter-val" data-target="{{ stats.total_items|default:'0' }}">
+        {{ stats.total_items|default:"0" }}
+      </div>
+      <div class="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">Items Registered</div>
     </div>
 
-    <!-- Main Headline -->
-    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight sm:leading-none">
-      Lost Something? <br class="hidden sm:inline" />
-      <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
-        Find It With FindX.
-      </span>
-    </h1>
-
-    <!-- Subtitle -->
-    <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-      "Lost Today. Found Tomorrow." AI-powered lost and found technology that connects people with their belongings securely through blind verification and semantic matching.
-    </p>
-
-    <!-- CTAs -->
-    <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-      <a href="{% url 'items:report_lost' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-bold rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white shadow-lg shadow-rose-500/25 transition-all transform hover:-translate-y-0.5">
-        <span>🔴</span>
-        Report Lost Item
-      </a>
-      <a href="{% url 'items:report_found' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-bold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5">
-        <span>🟢</span>
-        Report Found Item
-      </a>
+    <!-- Stat 2 -->
+    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xl shadow-slate-900/5 hover:-translate-y-1 transition-all duration-300 group">
+      <div class="flex items-center justify-between">
+        <span class="text-2xl">🤖</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-50 text-cyan-700">Neural</span>
+      </div>
+      <div class="text-3xl sm:text-4xl font-extrabold text-cyan-600 mt-3 counter-val" data-target="{{ stats.total_matches|default:'0' }}">
+        {{ stats.total_matches|default:"0" }}
+      </div>
+      <div class="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">AI Matches Generated</div>
     </div>
 
-    <div class="mt-4">
-      <a href="{% url 'items:item_list' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        Or search &amp; browse active listings &rarr;
-      </a>
+    <!-- Stat 3 -->
+    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xl shadow-slate-900/5 hover:-translate-y-1 transition-all duration-300 group">
+      <div class="flex items-center justify-between">
+        <span class="text-2xl">🤝</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-700">Reunited</span>
+      </div>
+      <div class="text-3xl sm:text-4xl font-extrabold text-emerald-600 mt-3 counter-val" data-target="{{ stats.returned_items|default:'0' }}">
+        {{ stats.returned_items|default:"0" }}
+      </div>
+      <div class="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">Items Safely Returned</div>
     </div>
 
-    <!-- Live Statistics Strip -->
-    <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
-      <div class="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
-        <div class="text-3xl sm:text-4xl font-extrabold text-white">{{ stats.total_items|default:"0" }}</div>
-        <div class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Items Reported</div>
+    <!-- Stat 4 -->
+    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xl shadow-slate-900/5 hover:-translate-y-1 transition-all duration-300 group">
+      <div class="flex items-center justify-between">
+        <span class="text-2xl">🛡️</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-teal-50 text-teal-700">Community</span>
       </div>
-      <div class="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
-        <div class="text-3xl sm:text-4xl font-extrabold text-cyan-400">{{ stats.total_matches|default:"0" }}</div>
-        <div class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Potential Matches</div>
+      <div class="text-3xl sm:text-4xl font-extrabold text-brand-900 mt-3 counter-val" data-target="{{ stats.total_users|default:'0' }}">
+        {{ stats.total_users|default:"0" }}
       </div>
-      <div class="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
-        <div class="text-3xl sm:text-4xl font-extrabold text-emerald-400">{{ stats.returned_items|default:"0" }}</div>
-        <div class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Items Returned</div>
-      </div>
-      <div class="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
-        <div class="text-3xl sm:text-4xl font-extrabold text-slate-200">{{ stats.total_users|default:"0" }}</div>
-        <div class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Verified Users</div>
-      </div>
+      <div class="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">Verified Members</div>
     </div>
 
   </div>
 </section>
 
-<!-- How FindX Solves the Problem -->
+
+<!-- ========================================================================= -->
+<!-- 3. RECENT ITEMS GALLERY WITH IMAGES & FILTER TABS                         -->
+<!-- ========================================================================= -->
+<section class="py-20 bg-slate-50 border-b border-slate-200/80">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-xs font-bold uppercase tracking-wider mb-2">
+          <span>🔍</span> Live Recoveries Feed
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          Recently Reported Items
+        </h2>
+        <p class="text-slate-600 text-sm mt-1 max-w-xl">
+          Real-time feed of lost possessions and spotted belongings currently protected by FindX.
+        </p>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="flex items-center gap-2 p-1.5 bg-slate-200/70 rounded-xl self-start md:self-auto">
+        <button type="button" id="tabAllBtn" class="px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white text-brand-900 shadow-sm">
+          All Items
+        </button>
+        <button type="button" id="tabFoundBtn" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-brand-900">
+          🟢 Found Items
+        </button>
+        <button type="button" id="tabLostBtn" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-brand-900">
+          🔴 Lost Items
+        </button>
+      </div>
+    </div>
+
+    <!-- Items Grid -->
+    {% if recent_items %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="itemsGrid">
+        {% for item in recent_items %}
+          <div class="item-feed-card bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 flex flex-col overflow-hidden group" data-type="{{ item.item_type }}">
+            
+            <!-- Item Photo Box -->
+            <div class="relative aspect-[16/10] bg-slate-100 overflow-hidden">
+              {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-tr from-slate-100 to-slate-200 text-slate-400">
+                  <span class="text-4xl mb-1">{% if item.category %}{{ item.category.icon }}{% else %}📦{% endif %}</span>
+                  <span class="text-[11px] font-semibold text-slate-500">No Photo Provided</span>
+                </div>
+              {% endif %}
+
+              <!-- Status Tag Badge -->
+              <div class="absolute top-3 left-3">
+                {% if item.item_type == 'FOUND' %}
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-md flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                    Found
+                  </span>
+                {% else %}
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-600 text-white shadow-md flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                    Lost
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- Blind Shield Overlay Pill -->
+              <div class="absolute bottom-3 right-3 px-2 py-0.5 rounded-lg glass-card text-[10px] font-semibold text-cyan-200 border border-cyan-400/30 flex items-center gap-1">
+                <span>🛡️ Blind Protected</span>
+              </div>
+            </div>
+
+            <!-- Item Body -->
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                  <span class="font-medium text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md">
+                    {% if item.category %}{{ item.category.name }}{% else %}General{% endif %}
+                  </span>
+                  <span>📅 {{ item.date_lost_or_found|date:"M d, Y" }}</span>
+                </div>
+
+                <h3 class="text-base font-bold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-1">
+                  {{ item.title }}
+                </h3>
+
+                <p class="text-xs text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                  {{ item.public_description|default:"No public description available." }}
+                </p>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500 flex items-center gap-1 truncate max-w-[140px]">
+                  <span>📍</span>
+                  <span class="truncate font-medium">{{ item.city|default:"Location logged" }}</span>
+                </span>
+
+                <a href="{% url 'items:item_detail' item.id %}" class="px-3.5 py-1.5 rounded-xl font-bold transition-all text-xs {% if item.item_type == 'FOUND' %}bg-emerald-50 text-emerald-800 hover:bg-emerald-600 hover:text-white border border-emerald-200{% else %}bg-rose-50 text-rose-800 hover:bg-rose-600 hover:text-white border border-rose-200{% endif %}">
+                  {% if item.item_type == 'FOUND' %}Claim Item &rarr;{% else %}Help Return &rarr;{% endif %}
+                </a>
+              </div>
+            </div>
+
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-lg mx-auto">
+        <div class="text-4xl mb-3">📦</div>
+        <h3 class="text-lg font-bold text-slate-800">No items reported yet</h3>
+        <p class="text-xs text-slate-500 mt-1">Be the first person in your community to report a lost or found item.</p>
+        <div class="mt-4 flex justify-center gap-3">
+          <a href="{% url 'items:report_lost' %}" class="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl text-xs hover:bg-rose-700 shadow">Report Lost</a>
+          <a href="{% url 'items:report_found' %}" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 shadow">Report Found</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="mt-12 text-center">
+      <a href="{% url 'items:item_list' %}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-slate-300 hover:border-cyan-500 text-slate-800 font-bold text-sm shadow-sm hover:shadow transition-all group">
+        <span>View Full Lost &amp; Found Directory</span>
+        <span class="group-hover:translate-x-1 transition-transform">&rarr;</span>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========================================================================= -->
+<!-- 4. HOW FINDX SOLVES SCAMS (WITH SAFE HANDOVER OTP IMAGE)                   -->
+<!-- ========================================================================= -->
 <section class="py-20 bg-white border-b border-slate-200/80">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
     <div class="text-center max-w-3xl mx-auto mb-16">
-      <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-600 mb-2">How FindX Works</h2>
-      <p class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-        Intelligent matching meets airtight anti-scam security.
-      </p>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
+        <span>🛡️</span> Zero Scam Guarantee
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+        Why Traditional Lost &amp; Found Fails,<br class="hidden sm:inline" />
+        And How FindX Solves It
+      </h2>
       <p class="mt-4 text-base text-slate-600">
-        Unlike ordinary bulletin boards, FindX never reveals private identifying marks or contact numbers publicly.
+        Standard boards publish everything—allowing imposters to call and fake ownership. FindX uses a 3-tier cryptographic shield.
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
       
-      <!-- Step 1 -->
-      <div class="p-8 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group">
-        <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-xl font-bold mb-6 group-hover:scale-110 transition-transform">
-          1
+      <!-- Left: 3 Process Steps (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Step 1 -->
+        <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all flex gap-4 items-start">
+          <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-800 flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-xs">
+            1
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Hidden Vault Details</h3>
+            <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+              Finders record secret identifying clues (e.g. lockscreen wallpaper, internal pocket items, scratches, partial serial number). These are <strong>never visible to the public</strong>.
+            </p>
+          </div>
         </div>
-        <h3 class="text-xl font-bold text-slate-900 mb-2">Report with Blind Details</h3>
-        <p class="text-sm text-slate-600 leading-relaxed">
-          Report your lost or found item. Secret marks, wallpapers, or contents are stored in an encrypted vault and never shown to the public.
-        </p>
+
+        <!-- Step 2 -->
+        <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all flex gap-4 items-start">
+          <div class="w-12 h-12 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-xs">
+            2
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Blind Challenge &amp; AI Evaluation</h3>
+            <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+              Claimants must answer verification questions blind. Our Gemini AI and sentence embedding engine analyze whether their answers genuinely match the finder's encrypted vault notes.
+            </p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all flex gap-4 items-start">
+          <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-lg flex-shrink-0 shadow-xs">
+            3
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">6-Digit Physical Handover OTP</h3>
+            <p class="text-sm text-slate-600 mt-1 leading-relaxed">
+              Once the finder accepts the owner, direct chat unlocks and a secret 6-digit Handover OTP is generated. The finder only releases the item after verifying the OTP in person!
+            </p>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Step 2 -->
-      <div class="p-8 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group">
-        <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-xl font-bold mb-6 group-hover:scale-110 transition-transform">
-          2
+      <!-- Right: Safe Handover OTP Illustration Card (5 cols) -->
+      <div class="lg:col-span-5">
+        <div class="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-emerald-400/30 bg-slate-900 group">
+          <img src="{% static 'img/safe-handover-otp.jpg' %}" alt="Safe In-Person Handover with OTP Verification" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700" />
+          
+          <!-- Floating Overlay Banner -->
+          <div class="absolute bottom-4 left-4 right-4 glass-card p-4 rounded-2xl border border-white/20 text-white shadow-xl">
+            <div class="flex items-center gap-2 text-xs font-bold text-emerald-300 mb-1">
+              <span class="text-base">🤝</span>
+              <span>Safe Public Meeting Handshake</span>
+            </div>
+            <p class="text-[11px] text-slate-200 leading-normal">
+              Coordinate a public handover right in FindX chat. Inspect the item, verify the 6-digit OTP, and mark returned safely.
+            </p>
+          </div>
         </div>
-        <h3 class="text-xl font-bold text-slate-900 mb-2">Automated AI Matching</h3>
-        <p class="text-sm text-slate-600 leading-relaxed">
-          Our sentence-embedding and visual analysis engine continuously correlates lost and found reports by semantic context, date proximity, and category.
-        </p>
-      </div>
-
-      <!-- Step 3 -->
-      <div class="p-8 rounded-2xl bg-slate-50 border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group">
-        <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-xl font-bold mb-6 group-hover:scale-110 transition-transform">
-          3
-        </div>
-        <h3 class="text-xl font-bold text-slate-900 mb-2">Verified Return &amp; OTP</h3>
-        <p class="text-sm text-slate-600 leading-relaxed">
-          The owner answers the blind verification challenge. Once approved by the finder, secure in-platform chat unlocks with a 6-digit physical handover OTP.
-        </p>
       </div>
 
     </div>
+
   </div>
 </section>
 
-<!-- Product Principle Banner -->
-<section class="py-16 bg-slate-900 text-white relative overflow-hidden">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-    <div class="inline-block p-2 rounded-xl bg-white/10 text-cyan-300 text-sm font-semibold mb-4">
-      ⚖️ Core Product Principle
+
+<!-- ========================================================================= -->
+<!-- 5. SECURITY & PRIVACY FEATURES GRID                                       -->
+<!-- ========================================================================= -->
+<section class="py-20 bg-slate-900 text-white relative overflow-hidden">
+  <!-- Ambient background light -->
+  <div class="absolute -top-24 -left-24 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-teal-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <span class="px-3 py-1 rounded-full bg-white/10 text-cyan-300 text-xs font-semibold uppercase tracking-wider border border-white/10">
+        🛡️ Built For Trust
+      </span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight mt-4">
+        Comprehensive Privacy By Design
+      </h2>
+      <p class="mt-3 text-slate-400 text-sm">
+        Every interaction is designed to protect your safety, personal data, and peace of mind.
+      </p>
     </div>
-    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-      "AI Finds Potential Matches. <br />
-      Ownership Verification Confirms The Real Owner."
-    </h3>
-    <p class="text-slate-400 text-sm max-w-2xl mx-auto">
-      We never claim AI alone proves ownership. Security questions and physical handover OTPs guarantee the rightful owner recovers their belongings.
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-2xl mb-4">
+          🚫
+        </div>
+        <h3 class="text-base font-bold text-white">No Public Phone Numbers</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+          Your personal contact details and phone numbers are never posted on the internet for fraudsters to harvest.
+        </p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center text-2xl mb-4">
+          🔔
+        </div>
+        <h3 class="text-base font-bold text-white">PC &amp; Mobile Push Alerts</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+          Receive instant desktop and mobile browser notifications with sound when someone messages or matches your item.
+        </p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-2xl mb-4">
+          🎯
+        </div>
+        <h3 class="text-base font-bold text-white">Semantic Image Embeddings</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+          MobileNetV2 neural feature extraction matches items even if descriptions use different words or synonyms.
+        </p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-300 flex items-center justify-center text-2xl mb-4">
+          🔒
+        </div>
+        <h3 class="text-base font-bold text-white">Encrypted Escrow Vault</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+          Sensitive identifiers are stored securely and only compared mathematically by AI, never exposed to visitors.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========================================================================= -->
+<!-- 6. FINAL CALL TO ACTION                                                   -->
+<!-- ========================================================================= -->
+<section class="py-20 bg-gradient-to-r from-brand-900 via-cyan-950 to-brand-900 text-white text-center relative overflow-hidden">
+  <div class="absolute inset-0 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none"></div>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6">
+    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-xs font-semibold text-cyan-300 shadow-sm">
+      <span>✨</span>
+      <span>Join Your College &amp; City Lost &amp; Found Network</span>
+    </div>
+
+    <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight">
+      Ready to Find Your Lost Item?
+    </h2>
+
+    <p class="text-slate-300 text-base max-w-xl mx-auto leading-relaxed">
+      Report your item in under 60 seconds. Our neural matching engine will continuously watch for matching records.
     </p>
-  </div>
-</section>
 
-<!-- CTA Bar -->
-<section class="py-16 bg-gradient-to-r from-brand-800 to-cyan-900 text-white text-center">
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-extrabold tracking-tight">Ready to get started?</h2>
-    <p class="mt-3 text-cyan-200 text-sm">Join FindX today and protect your everyday valuables.</p>
-    <div class="mt-8 flex justify-center gap-4">
-      <a href="{% url 'accounts:register' %}" class="px-6 py-3 rounded-xl bg-white text-brand-900 font-bold hover:bg-cyan-50 shadow-md transition-all">
-        Create Free Account
+    <div class="pt-4 flex flex-col sm:flex-row justify-center items-center gap-4">
+      <a href="{% url 'accounts:register' %}" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-500 hover:to-teal-500 text-brand-900 font-extrabold text-sm shadow-xl shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5">
+        Create Free Account &rarr;
       </a>
-      <a href="{% url 'items:item_list' %}" class="px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-all">
-        Browse Listings
+      <a href="{% url 'items:item_list' %}" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-sm backdrop-blur transition-all">
+        Browse All Listings
       </a>
     </div>
   </div>
 </section>
+
+<!-- Interactive Scripts for Tabs & Counter Animation -->
+<script>
+  // Tab Switching for Items Gallery
+  const tabAllBtn = document.getElementById('tabAllBtn');
+  const tabFoundBtn = document.getElementById('tabFoundBtn');
+  const tabLostBtn = document.getElementById('tabLostBtn');
+  const itemCards = document.querySelectorAll('.item-feed-card');
+
+  function setActiveTab(btn) {
+    [tabAllBtn, tabFoundBtn, tabLostBtn].forEach(b => {
+      if (b) {
+        b.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-brand-900';
+      }
+    });
+    if (btn) {
+      btn.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white text-brand-900 shadow-sm';
+    }
+  }
+
+  if (tabAllBtn && tabFoundBtn && tabLostBtn) {
+    tabAllBtn.addEventListener('click', () => {
+      setActiveTab(tabAllBtn);
+      itemCards.forEach(c => c.style.display = 'flex');
+    });
+
+    tabFoundBtn.addEventListener('click', () => {
+      setActiveTab(tabFoundBtn);
+      itemCards.forEach(c => {
+        c.style.display = c.getAttribute('data-type') === 'FOUND' ? 'flex' : 'none';
+      });
+    });
+
+    tabLostBtn.addEventListener('click', () => {
+      setActiveTab(tabLostBtn);
+      itemCards.forEach(c => {
+        c.style.display = c.getAttribute('data-type') === 'LOST' ? 'flex' : 'none';
+      });
+    });
+  }
+
+  // Smooth Number Counter Animation
+  const counters = document.querySelectorAll('.counter-val');
+  let counted = false;
+
+  function animateCounters() {
+    if (counted) return;
+    counted = true;
+
+    counters.forEach(counter => {
+      const target = parseInt(counter.getAttribute('data-target') || '0', 10);
+      if (target === 0) return;
+      const duration = 1200;
+      const start = 0;
+      const startTime = performance.now();
+
+      function updateCounter(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const current = Math.floor(progress * target);
+        counter.textContent = current;
+
+        if (progress < 1) {
+          requestAnimationFrame(updateCounter);
+        } else {
+          counter.textContent = target;
+        }
+      }
+      requestAnimationFrame(updateCounter);
+    });
+  }
+
+  // Trigger counters when in view
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        animateCounters();
+      }
+    });
+  }, { threshold: 0.2 });
+
+  const statsSection = document.querySelector('.counter-val');
+  if (statsSection) {
+    observer.observe(statsSection.parentElement.parentElement);
+  }
+</script>
 {% endblock %}

@@ -20,7 +20,17 @@ def home(request):
         'returned_items':  Item.objects.filter(status='RETURNED').count(),
         'total_users':     User.objects.filter(is_email_verified=True).count(),
     }
-    return render(request, 'home/index.html', {'stats': stats})
+    recent_found = Item.objects.filter(item_type='FOUND', is_active=True).select_related('category').order_by('-created_at')[:4]
+    recent_lost = Item.objects.filter(item_type='LOST', is_active=True).select_related('category').order_by('-created_at')[:4]
+    recent_items = Item.objects.filter(is_active=True).select_related('category').order_by('-created_at')[:6]
+
+    context = {
+        'stats': stats,
+        'recent_found': recent_found,
+        'recent_lost': recent_lost,
+        'recent_items': recent_items,
+    }
+    return render(request, 'home/index.html', context)
 
 
 @login_required
