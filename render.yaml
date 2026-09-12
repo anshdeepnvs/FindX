@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: findx-platform
+    runtime: python
+    buildCommand: ./build.sh
+    startCommand: gunicorn lost_and_found.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: "2"
