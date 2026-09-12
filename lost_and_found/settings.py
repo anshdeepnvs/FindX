@@ -135,7 +135,7 @@ DEFAULT_FROM_EMAIL = os.getenv(
     f"FindX Platform <{_EMAIL_HOST_USER}>" if _EMAIL_HOST_USER else "noreply@findx.local"
 )
 
-_placeholders = ("your_email@gmail.com", "your_16_character", "paste_your_16")
+_placeholders = ("your_email@gmail.com", "your_16_character", "paste_your_16", "your_16_char_app_password")
 IS_SMTP_CONFIGURED = (
     bool(_EMAIL_HOST_USER)
     and bool(_EMAIL_HOST_PASSWORD)
