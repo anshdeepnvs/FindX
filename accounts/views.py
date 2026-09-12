@@ -106,7 +106,7 @@ def verify_otp_view(request):
         "form": form,
         "email": user.email,
         "is_smtp": is_smtp,
-        "dev_otp": active_otp.otp_code if not is_smtp else None,
+        "dev_otp": active_otp.otp_code,
     }
     return render(request, "accounts/verify_otp.html", context)
 

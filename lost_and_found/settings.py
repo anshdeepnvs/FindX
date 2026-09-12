@@ -124,46 +124,41 @@ LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'core:home'
 
 # ─── Email Configuration ───────────────────────────────────────────────────────
-_EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-_EMAIL_PORT          = int(os.getenv("EMAIL_PORT", 587))
-_EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1")
-_EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER", "").strip()
-_EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").replace(" ", "").strip()
+EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.gmail.com").strip()
+EMAIL_PORT          = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1")
+EMAIL_USE_SSL       = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1")
+EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").replace(" ", "").strip()
+EMAIL_TIMEOUT       = int(os.getenv("EMAIL_TIMEOUT", 10))  # 10s timeout prevents Gunicorn worker timeout
 
-DEFAULT_FROM_EMAIL = os.getenv(
-    "DEFAULT_FROM_EMAIL",
-    f"FindX Platform <{_EMAIL_HOST_USER}>" if _EMAIL_HOST_USER else "noreply@findx.local"
+if EMAIL_HOST_USER:
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"FindX Platform <{EMAIL_HOST_USER}>")
+else:
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "FindX Platform <noreply@findx.local>")
+
+_placeholders = (
+    "your_email@gmail.com",
+    "your_16_character",
+    "paste_your_16",
+    "your_16_char_app_password",
+    "abcd efgh ijkl mnop",
+    "abcdefghijklmnop",
 )
-
-_placeholders = ("your_email@gmail.com", "your_16_character", "paste_your_16", "your_16_char_app_password")
 IS_SMTP_CONFIGURED = (
-    bool(_EMAIL_HOST_USER)
-    and bool(_EMAIL_HOST_PASSWORD)
-    and _EMAIL_HOST_USER not in _placeholders
-    and not any(p in _EMAIL_HOST_PASSWORD for p in _placeholders)
+    bool(EMAIL_HOST_USER)
+    and bool(EMAIL_HOST_PASSWORD)
+    and EMAIL_HOST_USER not in _placeholders
+    and not any(p in EMAIL_HOST_PASSWORD for p in _placeholders)
 )
 
 if "test" in sys.argv:
-    MAILERS = {
-        "default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"},
-    }
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 elif IS_SMTP_CONFIGURED:
-    MAILERS = {
-        "default": {
-            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-            "OPTIONS": {
-                "host": _EMAIL_HOST,
-                "port": _EMAIL_PORT,
-                "username": _EMAIL_HOST_USER,
-                "password": _EMAIL_HOST_PASSWORD,
-                "use_tls": _EMAIL_USE_TLS,
-            },
-        },
-    }
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
-    MAILERS = {
-        "default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"},
-    }
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 
 # ─── FindX AI Matching Configuration ──────────────────────────────────────────
 FINDX_MATCH_WEIGHTS = {

@@ -75,16 +75,29 @@ def send_otp_email(user, otp_code):
     </html>
     """
 
+    if not user or not getattr(user, "email", None) or not user.email.strip():
+        logger.warning(f"send_otp_email called with invalid recipient: {user}")
+        return False, "No recipient email address provided."
+
     try:
         send_mail(
             subject=subject,
             message=text_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
+            recipient_list=[user.email.strip()],
             html_message=html_content,
             fail_silently=False,
         )
         return True, "Email dispatched successfully."
     except Exception as e:
-        logger.error(f"Error sending email to {user.email}: {e}")
-        return False, str(e)
+        err_msg = str(e)
+        logger.error(f"Error sending email to {user.email}: {err_msg}")
+        if "535" in err_msg or "BadCredentials" in err_msg:
+            friendly_err = "Gmail authentication failed (Bad Credentials). Make sure 2-Step Verification is ON and you generated a 16-character Google App Password from https://myaccount.google.com/apppasswords."
+        elif "timed out" in err_msg.lower() or "timeout" in err_msg.lower():
+            friendly_err = "SMTP connection timed out. The mail server could not be reached in 10 seconds."
+        elif "connection refused" in err_msg.lower():
+            friendly_err = "SMTP connection refused. Port 587 may be blocked or unreachable."
+        else:
+            friendly_err = err_msg
+        return False, friendly_err

@@ -18,8 +18,11 @@
 
     {% if dev_otp %}
       <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 space-y-1">
-        <div class="font-bold">Development Mode OTP:</div>
+        <div class="font-bold">{% if is_smtp %}Verification Code (Backup Access):{% else %}Development Mode OTP:{% endif %}</div>
         <div class="font-mono text-xl font-black text-cyan-800 tracking-widest">{{ dev_otp }}</div>
+        {% if is_smtp %}
+          <div class="text-[11px] text-slate-500">Also sent to your email. You may use this code immediately if your inbox has spam filters or delivery delays.</div>
+        {% endif %}
       </div>
     {% endif %}
 
