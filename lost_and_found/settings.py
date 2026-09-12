@@ -145,19 +145,26 @@ _placeholders = (
     "abcd efgh ijkl mnop",
     "abcdefghijklmnop",
 )
-IS_SMTP_CONFIGURED = (
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+
+_smtp_active = (
     bool(EMAIL_HOST_USER)
     and bool(EMAIL_HOST_PASSWORD)
     and EMAIL_HOST_USER not in _placeholders
     and not any(p in EMAIL_HOST_PASSWORD for p in _placeholders)
 )
 
+IS_SMTP_CONFIGURED = bool(RESEND_API_KEY) or _smtp_active
+
 if "test" in sys.argv:
     EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = "accounts.email_backends.ResendEmailBackend"
 elif IS_SMTP_CONFIGURED:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 
 
 # ─── FindX AI Matching Configuration ──────────────────────────────────────────
