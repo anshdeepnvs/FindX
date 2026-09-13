@@ -7,3 +7,5 @@ pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
 python manage.py init_admin
+python manage.py sync_media_to_db
+

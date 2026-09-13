@@ -86,3 +86,47 @@ def dashboard(request):
         'unread_msgs':   unread_msgs,
     }
     return render(request, 'dashboard/dashboard.html', ctx)
+
+
+import os
+import mimetypes
+from django.http import HttpResponse, Http404, FileResponse
+from django.conf import settings
+
+
+def serve_media(request, path):
+    """
+    Production-ready media server that streams files with aggressive HTTP caching.
+    If the file is not on the ephemeral local disk (e.g. after Render restart),
+    it dynamically restores and streams it from PostgreSQL (Neon).
+    """
+    from core.models import DatabaseFile
+
+    clean_path = path.replace("\\", "/").lstrip("/")
+    local_path = os.path.join(settings.MEDIA_ROOT, clean_path.replace("/", os.sep))
+
+    # 1. If file exists on local disk, serve immediately
+    if os.path.exists(local_path) and os.path.isfile(local_path):
+        content_type, _ = mimetypes.guess_type(local_path)
+        resp = FileResponse(open(local_path, "rb"), content_type=content_type or "application/octet-stream")
+        resp["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+    # 2. Server restarted — Fetch from PostgreSQL (Neon) DatabaseFile
+    db_file = DatabaseFile.objects.filter(name=clean_path).first()
+    if db_file:
+        # Restore local disk cache so subsequent hits don't touch the DB
+        try:
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "wb") as f:
+                f.write(db_file.content)
+        except Exception:
+            pass
+
+        resp = HttpResponse(db_file.content, content_type=db_file.content_type)
+        resp["Content-Length"] = db_file.size
+        resp["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+    raise Http404("Media file not found.")
+
