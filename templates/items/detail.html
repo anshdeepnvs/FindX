@@ -49,9 +49,13 @@
       <div class="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Reported By</h3>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-600 text-white flex items-center justify-center font-bold text-sm uppercase">
-            {{ item.reporter.username|slice:":1" }}
-          </div>
+          {% if item.reporter.avatar %}
+            <img src="{{ item.reporter.avatar.url }}" alt="{{ item.reporter.get_full_name_or_username }}" class="w-10 h-10 rounded-full object-cover shadow-sm border border-slate-200" />
+          {% else %}
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-brand-600 text-white flex items-center justify-center font-bold text-sm uppercase shadow-sm">
+              {{ item.reporter.username|slice:":1" }}
+            </div>
+          {% endif %}
           <div>
             <div class="text-sm font-bold text-slate-900">{{ item.reporter.get_full_name_or_username }}</div>
             <div class="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">

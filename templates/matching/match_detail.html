@@ -90,7 +90,12 @@
           <span class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
             <span>🔴</span> Lost Item Report
           </span>
-          <span class="text-xs font-semibold text-rose-700">Reporter: {{ match.lost_item.reporter.username }}</span>
+          <span class="text-xs font-semibold text-rose-700 flex items-center gap-1.5">
+            {% if match.lost_item.reporter.avatar %}
+              <img src="{{ match.lost_item.reporter.avatar.url }}" alt="{{ match.lost_item.reporter.username }}" class="w-5 h-5 rounded-full object-cover border border-rose-300" />
+            {% endif %}
+            <span>Reporter: {{ match.lost_item.reporter.username }}</span>
+          </span>
         </div>
 
         <div class="p-6 space-y-4">
@@ -128,7 +133,12 @@
           <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
             <span>🟢</span> Found Item Report
           </span>
-          <span class="text-xs font-semibold text-emerald-700">Finder: {{ match.found_item.reporter.username }}</span>
+          <span class="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+            {% if match.found_item.reporter.avatar %}
+              <img src="{{ match.found_item.reporter.avatar.url }}" alt="{{ match.found_item.reporter.username }}" class="w-5 h-5 rounded-full object-cover border border-emerald-300" />
+            {% endif %}
+            <span>Finder: {{ match.found_item.reporter.username }}</span>
+          </span>
         </div>
 
         <div class="p-6 space-y-4">
