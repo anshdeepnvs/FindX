@@ -319,7 +319,7 @@
             <!-- Item Photo Box -->
             <div class="relative aspect-[16/10] bg-slate-100 overflow-hidden">
               {% if item.image %}
-                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {% else %}
                 <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-tr from-slate-100 to-slate-200 text-slate-400">
                   <span class="text-4xl mb-1">{% if item.category %}{{ item.category.icon }}{% else %}📦{% endif %}</span>

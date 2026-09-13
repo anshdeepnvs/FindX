@@ -82,7 +82,7 @@
             <!-- Image / Placeholder -->
             <div class="relative aspect-video bg-slate-100 overflow-hidden">
               {% if item.image %}
-                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               {% else %}
                 <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-gradient-to-tr from-slate-100 to-slate-50">
                   <span class="text-3xl mb-1">{{ item.category.icon|default:"📦" }}</span>
@@ -149,6 +149,29 @@
         </div>
       {% endfor %}
     </div>
+
+    <!-- Pagination Controls -->
+    {% if page_obj.has_other_pages %}
+      <div class="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
+        <div>
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if typ %}&type={{ typ }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if selected_city %}&city={{ selected_city }}{% endif %}" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs">
+              &larr; Previous Page
+            </a>
+          {% endif %}
+        </div>
+        <span class="text-xs text-slate-500 font-medium">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+        <div>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if typ %}&type={{ typ }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if selected_city %}&city={{ selected_city }}{% endif %}" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs">
+              Next Page &rarr;
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
   {% else %}
     <!-- Empty State -->
     <div class="text-center py-16 px-4 bg-white rounded-2xl border border-slate-200">

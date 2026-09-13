@@ -41,36 +41,40 @@ def dashboard(request):
     lost_items  = my_items.filter(item_type='LOST')
     found_items = my_items.filter(item_type='FOUND')
 
-    # Matches involving this user
+    # Matches involving this user (with optimized select_related to prevent N+1 queries)
     my_lost_ids  = lost_items.values_list('id', flat=True)
     my_found_ids = found_items.values_list('id', flat=True)
-    matches = Match.objects.filter(
-        lost_item_id__in=my_lost_ids
-    ) | Match.objects.filter(
-        found_item_id__in=my_found_ids
-    )
-    matches = matches.exclude(status=Match.STATUS_RETURNED).order_by('-final_score')[:5]
+    matches = (
+        Match.objects.filter(lost_item_id__in=my_lost_ids)
+        | Match.objects.filter(found_item_id__in=my_found_ids)
+    ).exclude(
+        status=Match.STATUS_RETURNED
+    ).select_related(
+        'lost_item', 'found_item', 'lost_item__category', 'found_item__category', 'found_item__reporter', 'lost_item__reporter'
+    ).order_by('-final_score')[:5]
 
     # Pending claims on my found items
     pending_claims = OwnershipClaim.objects.filter(
         match__found_item__reporter=user,
         status=OwnershipClaim.STATUS_PENDING,
-    ).select_related('claimant', 'match__lost_item').order_by('-created_at')[:5]
+    ).select_related('claimant', 'match__lost_item', 'match__found_item').order_by('-created_at')[:5]
 
     # My submitted claims
     my_claims = user.ownership_claims.exclude(
         status=OwnershipClaim.STATUS_CANCELLED
-    ).select_related('match__found_item').order_by('-created_at')[:5]
+    ).select_related('match__found_item', 'match__lost_item', 'match__found_item__category').order_by('-created_at')[:5]
 
     # Recent notifications
     notifications = user.notifications.filter(is_read=False)[:5]
 
-    # Unread chat count
-    from chat.models import Conversation
+    # Unread chat count — executed in 1 single fast query
+    from chat.models import Conversation, Message
     my_convos = Conversation.objects.filter(
         participant_a=user
     ) | Conversation.objects.filter(participant_b=user)
-    unread_msgs = sum(c.unread_count(user) for c in my_convos[:20])
+    unread_msgs = Message.objects.filter(
+        conversation__in=my_convos, is_read=False
+    ).exclude(sender=user).count()
 
     ctx = {
         'lost_count':   lost_items.count(),

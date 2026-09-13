@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
+from django.core.paginator import Paginator
 from .models import Item, Category, PrivateDetail
 from .forms import ReportItemForm, PrivateDetailForm, ItemSearchForm
 
@@ -29,11 +30,19 @@ def item_list(request):
         items = items.filter(city__icontains=city)
 
     categories = Category.objects.all()
+    total_count = items.count()
+
+    # Paginate results for instant render
+    paginator = Paginator(items, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     ctx = {
-        'items': items,
+        'items': page_obj,
+        'page_obj': page_obj,
         'form': form,
         'categories': categories,
-        'total': items.count(),
+        'total': total_count,
         'q': q, 'typ': typ, 'selected_city': city,
     }
     return render(request, 'items/list.html', ctx)
@@ -45,18 +54,14 @@ def item_detail(request, pk):
 
     matches = []
     if is_owner:
-        # Guarantee fresh matches for the owner
-        if item.is_active and item.status in (Item.STATUS_ACTIVE, Item.STATUS_MATCH_FOUND):
-            try:
-                from matching.services import run_matching
-                run_matching(item)
-            except Exception:
-                pass
-
         if item.item_type == 'LOST':
-            matches = item.matches_as_lost.filter(final_score__gte=40).order_by('-final_score')[:5]
+            matches = item.matches_as_lost.filter(
+                final_score__gte=40
+            ).select_related('found_item', 'found_item__category', 'found_item__reporter').order_by('-final_score')[:5]
         else:
-            matches = item.matches_as_found.filter(final_score__gte=40).order_by('-final_score')[:5]
+            matches = item.matches_as_found.filter(
+                final_score__gte=40
+            ).select_related('lost_item', 'lost_item__category', 'lost_item__reporter').order_by('-final_score')[:5]
 
     private = None
     if is_owner:
@@ -88,18 +93,10 @@ def report_lost(request):
             pvt.item = item
             pvt.save()
 
-            # Synchronously run matching so matches exist immediately on redirect
-            match_count = 0
-            try:
-                from matching.services import run_matching
-                match_count = run_matching(item)
-            except Exception:
-                pass
-
-            if match_count > 0:
-                messages.success(request, f'Your lost item report for "{item.title}" has been created. 🎉 FindX detected {match_count} potential match(es)!')
-            else:
-                messages.success(request, f'Your lost item report for "{item.title}" has been created. FindX will continuously scan for matches!')
+            messages.success(
+                request,
+                f'🎉 Lost item report for "{item.title}" created successfully! FindX AI is actively scanning for matching items.'
+            )
             return redirect(f'/items/{item.pk}/?created=1')
     else:
         form     = ReportItemForm()
@@ -124,18 +121,10 @@ def report_found(request):
                 pvt.item = item
                 pvt.save()
 
-            # Synchronously run matching so matches exist immediately on redirect
-            match_count = 0
-            try:
-                from matching.services import run_matching
-                match_count = run_matching(item)
-            except Exception:
-                pass
-
-            if match_count > 0:
-                messages.success(request, f'Your found item report for "{item.title}" has been posted. 🎉 Found {match_count} matching lost item report(s)!')
-            else:
-                messages.success(request, f'Your found item report for "{item.title}" has been posted. If we find a matching lost report, we will notify the owner!')
+            messages.success(
+                request,
+                f'🎉 Found item report for "{item.title}" posted successfully! FindX AI will alert the owner once verified.'
+            )
             return redirect(f'/items/{item.pk}/?created=1')
     else:
         form = ReportItemForm()
@@ -162,16 +151,14 @@ def item_matches_status(request, pk):
     if not request.user.is_authenticated or request.user != item.reporter:
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
-    try:
-        from matching.services import run_matching
-        run_matching(item)
-    except Exception:
-        pass
-
     if item.item_type == 'LOST':
-        matches = item.matches_as_lost.filter(final_score__gte=40).order_by('-final_score')[:5]
+        matches = item.matches_as_lost.filter(
+            final_score__gte=40
+        ).select_related('found_item').order_by('-final_score')[:5]
     else:
-        matches = item.matches_as_found.filter(final_score__gte=40).order_by('-final_score')[:5]
+        matches = item.matches_as_found.filter(
+            final_score__gte=40
+        ).select_related('lost_item').order_by('-final_score')[:5]
 
     data = [
         {

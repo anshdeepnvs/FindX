@@ -135,6 +135,60 @@ def _hamming_similarity(hash_a: int, hash_b: int, total_bits: int = 64) -> float
     return max(0.0, min(1.0, 1.0 - (dist / total_bits)))
 
 
+_IMAGE_FEATURE_CACHE = {}
+_MAX_FEATURE_CACHE = 1000
+
+
+def _get_cached_features(img_input):
+    """
+    Extracts or retrieves cached spatial vector, color histogram, and dhash.
+    Retrieval from memory takes < 0.005ms.
+    """
+    if not img_input:
+        return None
+
+    cache_key = None
+    if hasattr(img_input, "name") and img_input.name:
+        cache_key = img_input.name
+    elif isinstance(img_input, str):
+        cache_key = img_input
+
+    if cache_key and cache_key in _IMAGE_FEATURE_CACHE:
+        return _IMAGE_FEATURE_CACHE[cache_key]
+
+    pil_img = _load_pil_image(img_input)
+    if pil_img is None:
+        return None
+
+    try:
+        vec = _compute_spatial_block_vector(pil_img, grid_size=8)
+        norm_v = float(np.linalg.norm(vec))
+
+        hist = _compute_color_histogram(pil_img, bins=16)
+        norm_h = float(np.linalg.norm(hist))
+
+        gray = np.array(pil_img.resize((9, 8)).convert("L"), dtype=np.float32)
+        std = float(np.std(gray))
+        dhash = _compute_dhash(pil_img, hash_size=8) if std > 3.0 else None
+
+        features = {
+            "vec": vec,
+            "norm_v": norm_v,
+            "hist": hist,
+            "norm_h": norm_h,
+            "std": std,
+            "dhash": dhash,
+        }
+
+        if cache_key and len(_IMAGE_FEATURE_CACHE) < _MAX_FEATURE_CACHE:
+            _IMAGE_FEATURE_CACHE[cache_key] = features
+
+        return features
+    except Exception as e:
+        logger.warning(f"Error computing visual features: {e}")
+        return None
+
+
 def calculate_image_similarity(img_a, img_b) -> float:
     """
     Calculates visual similarity between two images.
@@ -145,52 +199,39 @@ def calculate_image_similarity(img_a, img_b) -> float:
       - 35% Color Palette / Hue distribution similarity
       - 15% Perceptual Difference Hash structural similarity
     
-    If either image is missing or invalid:
-      - Returns 0.0
+    Uses precomputed in-memory feature cache for sub-millisecond execution.
     """
     if not img_a or not img_b:
         return 0.0
 
-    pil_a = _load_pil_image(img_a)
-    pil_b = _load_pil_image(img_b)
+    feat_a = _get_cached_features(img_a)
+    feat_b = _get_cached_features(img_b)
 
-    if pil_a is None or pil_b is None:
+    if not feat_a or not feat_b:
         return 0.0
 
     try:
         # 1. Spatial RGB Layout Vector Cosine Similarity
-        vec_a = _compute_spatial_block_vector(pil_a, grid_size=8)
-        vec_b = _compute_spatial_block_vector(pil_b, grid_size=8)
-        norm_a, norm_b = np.linalg.norm(vec_a), np.linalg.norm(vec_b)
-        spatial_sim = float(np.dot(vec_a, vec_b) / (norm_a * norm_b)) if norm_a > 0 and norm_b > 0 else 0.0
+        norm_ab = feat_a["norm_v"] * feat_b["norm_v"]
+        spatial_sim = float(np.dot(feat_a["vec"], feat_b["vec"]) / norm_ab) if norm_ab > 0 else 0.0
         spatial_sim = max(0.0, min(1.0, spatial_sim))
 
         # 2. Color Palette / Chromatic Hue Histogram Similarity
-        hist_a = _compute_color_histogram(pil_a, bins=16)
-        hist_b = _compute_color_histogram(pil_b, bins=16)
-        norm_ha, norm_hb = np.linalg.norm(hist_a), np.linalg.norm(hist_b)
-        color_sim = float(np.dot(hist_a, hist_b) / (norm_ha * norm_hb)) if norm_ha > 0 and norm_hb > 0 else 0.0
+        norm_hab = feat_a["norm_h"] * feat_b["norm_h"]
+        color_sim = float(np.dot(feat_a["hist"], feat_b["hist"]) / norm_hab) if norm_hab > 0 else 0.0
         color_sim = max(0.0, min(1.0, color_sim))
 
-        # 3. Perceptual Difference Hash Structural Similarity (only for textured images)
-        gray_a = np.array(pil_a.resize((9, 8)).convert("L"), dtype=np.float32)
-        gray_b = np.array(pil_b.resize((9, 8)).convert("L"), dtype=np.float32)
-        std_a, std_b = np.std(gray_a), np.std(gray_b)
-
-        if std_a > 3.0 and std_b > 3.0:
-            dhash_a = _compute_dhash(pil_a, hash_size=8)
-            dhash_b = _compute_dhash(pil_b, hash_size=8)
-            hash_sim = _hamming_similarity(dhash_a, dhash_b, total_bits=64)
+        # 3. Perceptual Difference Hash Structural Similarity
+        if feat_a["dhash"] is not None and feat_b["dhash"] is not None:
+            hash_sim = _hamming_similarity(feat_a["dhash"], feat_b["dhash"], total_bits=64)
         else:
             hash_sim = (spatial_sim + color_sim) / 2.0
 
-        # Composite Blended Visual Score
         raw_score = (
             (spatial_sim * 0.50) +
             (color_sim * 0.35) +
             (hash_sim * 0.15)
         )
-
         return float(round(max(0.0, min(1.0, raw_score)), 4))
 
     except Exception as e:

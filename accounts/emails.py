@@ -83,27 +83,23 @@ def send_otp_email(user, otp_code):
         logger.warning(f"send_otp_email called with invalid recipient: {user}")
         return False, "No recipient email address provided."
 
-    try:
-        send_mail(
-            subject=subject,
-            message=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email.strip()],
-            html_message=html_content,
-            fail_silently=False,
-        )
-        return True, "Email dispatched successfully."
-    except Exception as e:
-        err_msg = str(e)
-        logger.error(f"Error sending email to {user.email}: {err_msg}")
-        if "535" in err_msg or "BadCredentials" in err_msg:
-            friendly_err = "Gmail authentication failed (Bad Credentials). Make sure 2-Step Verification is ON and you generated a 16-character Google App Password from https://myaccount.google.com/apppasswords."
-        elif "101" in err_msg or "network is unreachable" in err_msg.lower():
-            friendly_err = "Cloud host (Render Free Tier) blocks outbound SMTP ports 587/465/25 to prevent spam. Use the on-screen Verification Code (shown below), or add a free RESEND_API_KEY in Render to send emails via HTTPS port 443."
-        elif "timed out" in err_msg.lower() or "timeout" in err_msg.lower():
-            friendly_err = "SMTP connection timed out. The mail server could not be reached in 10 seconds."
-        elif "connection refused" in err_msg.lower():
-            friendly_err = "SMTP connection refused. Port 587 may be blocked by your hosting provider."
-        else:
-            friendly_err = err_msg
-        return False, friendly_err
+    import threading
+
+    def _async_send():
+        try:
+            send_mail(
+                subject=subject,
+                message=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email.strip()],
+                html_message=html_content,
+                fail_silently=False,
+            )
+            logger.info(f"OTP email sent to {user.email}")
+        except Exception as e:
+            logger.warning(f"Background email dispatch error for {user.email}: {e}")
+
+    # Dispatch in background thread for zero HTTP latency
+    threading.Thread(target=_async_send, daemon=True).start()
+    return True, "Email dispatched in background."
+

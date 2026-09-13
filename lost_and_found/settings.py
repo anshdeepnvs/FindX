@@ -211,8 +211,9 @@ FINDX_MATCH_THRESHOLDS = {
 # Gemini API key (optional — for AI answer scoring on claims)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Use sentence-transformers for text matching (downloads ~90MB on first run)
+# Use sentence-transformers for text matching (optional — disabled by default for lightning-fast matching)
 FINDX_USE_SENTENCE_TRANSFORMERS = (
     "test" not in sys.argv
-    and os.getenv("USE_SENTENCE_TRANSFORMERS", "false" if os.getenv("RENDER") else "true").lower() == "true"
+    and os.getenv("USE_SENTENCE_TRANSFORMERS", "false").lower() == "true"
 )
+

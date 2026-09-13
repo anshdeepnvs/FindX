@@ -126,16 +126,14 @@ def login_view(request):
         identifier = request.POST.get("username", "").strip()
         password = request.POST.get("password", "")
 
-        # Try authenticating directly with username
-        user = authenticate(request, username=identifier, password=password)
-
-        # If that fails, try looking up by email address
-        if user is None and "@" in identifier:
-            try:
-                user_obj = User.objects.get(email__iexact=identifier)
+        user = None
+        if "@" in identifier:
+            # Fast direct path if user logged in using email address
+            user_obj = User.objects.filter(email__iexact=identifier).first()
+            if user_obj:
                 user = authenticate(request, username=user_obj.username, password=password)
-            except (User.DoesNotExist, User.MultipleObjectsReturned):
-                user = None
+        else:
+            user = authenticate(request, username=identifier, password=password)
 
         if user is not None:
             login(request, user)
@@ -193,13 +191,13 @@ def profile_view(request):
         return redirect("accounts:profile")
 
     my_items = user.reported_items.all().select_related("category").order_by("-created_at")
-    my_claims = user.ownership_claims.all().select_related("match__found_item").order_by("-created_at")
+    my_claims = user.ownership_claims.all().select_related("match__found_item", "match__lost_item").order_by("-created_at")
 
     # Claims received on items reported as FOUND by this user
     from claims.models import OwnershipClaim
     received_claims = OwnershipClaim.objects.filter(
         match__found_item__reporter=user
-    ).select_related("claimant", "match__lost_item").order_by("-created_at")
+    ).select_related("claimant", "match__lost_item", "match__found_item").order_by("-created_at")
 
     context = {
         "user": user,
