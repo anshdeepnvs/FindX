@@ -27,28 +27,16 @@ def register_view(request):
             otp_obj = EmailOTP.generate_otp(user)
 
             # Send Email (via SMTP or dev console)
-            success, err_msg = send_otp_email(user, otp_obj.otp_code)
+            # Send Email (only if live email is enabled in settings)
+            send_otp_email(user, otp_obj.otp_code)
 
             # Store user_id in session for verification
             request.session["verification_user_id"] = user.id
 
-            is_smtp = getattr(settings, "IS_SMTP_CONFIGURED", False)
-            if success:
-                if is_smtp:
-                    messages.success(
-                        request,
-                        f"Account created successfully! A 6-digit OTP has been sent to {user.email}. Please check your inbox (and spam folder)."
-                    )
-                else:
-                    messages.warning(
-                        request,
-                        f"Account created! Note: Real email was NOT sent because your Gmail credentials in .env are still placeholders. To send live emails to inboxes, add your Gmail and App Password to .env. (Testing OTP: {otp_obj.otp_code})"
-                    )
-            else:
-                messages.error(
-                    request,
-                    f"Account created, but Gmail SMTP failed ({err_msg}). Please check your credentials in .env. (Testing OTP: {otp_obj.otp_code})"
-                )
+            messages.success(
+                request,
+                f"🎉 Account created successfully! Enter the 6-digit verification code below to activate your account."
+            )
 
             return redirect("accounts:verify_otp")
     else:
@@ -122,23 +110,9 @@ def resend_otp_view(request):
         return redirect("accounts:login")
 
     otp_obj = EmailOTP.generate_otp(user)
-    success, err_msg = send_otp_email(user, otp_obj.otp_code)
+    send_otp_email(user, otp_obj.otp_code)
 
-    is_smtp = getattr(settings, "IS_SMTP_CONFIGURED", False)
-    if success:
-        if is_smtp:
-            messages.success(request, f"A fresh OTP has been sent to your email ({user.email}).")
-        else:
-            messages.warning(
-                request,
-                f"New OTP generated! Real email not sent because .env has placeholder credentials. (Dev OTP: {otp_obj.otp_code})"
-            )
-    else:
-        messages.error(
-            request,
-            f"Gmail SMTP error ({err_msg}). Please check .env. (Dev OTP: {otp_obj.otp_code})"
-        )
-
+    messages.success(request, "A fresh 6-digit verification code has been generated below.")
     return redirect("accounts:verify_otp")
 
 

@@ -49,7 +49,7 @@
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700" for="{{ form.email.id_for_label }}">
             Email Address <span class="text-rose-500">*</span>
           </label>
-          <span class="text-[11px] font-medium text-cyan-700">Verification OTP sent here</span>
+          <span class="text-[11px] font-medium text-cyan-700">Used for account safety</span>
         </div>
         {{ form.email }}
         {% if form.email.errors %}
@@ -96,7 +96,7 @@
       <!-- Submit CTA -->
       <div class="pt-3">
         <button type="submit" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-brand-900 via-brand-800 to-cyan-900 hover:from-brand-800 hover:to-cyan-800 text-white font-bold text-sm tracking-wide shadow-lg shadow-brand-900/15 hover:shadow-brand-900/25 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
-          <span>Create Account &amp; Send OTP</span>
+          <span>Create Account &amp; Verify</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
           </svg>

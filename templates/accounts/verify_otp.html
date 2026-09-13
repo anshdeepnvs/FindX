@@ -11,18 +11,17 @@
       </div>
       <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Verify your email</h1>
       <p class="text-xs text-slate-500 mt-2 leading-relaxed">
-        We sent a 6-digit verification OTP code to:<br />
-        <strong class="text-slate-900 text-sm font-bold">{{ email }}</strong>
+        Account: <strong class="text-slate-900 font-bold">{{ email }}</strong>
       </p>
     </div>
 
     {% if dev_otp %}
-      <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 space-y-1">
-        <div class="font-bold">{% if is_smtp %}Verification Code (Backup Access):{% else %}Development Mode OTP:{% endif %}</div>
-        <div class="font-mono text-xl font-black text-cyan-800 tracking-widest">{{ dev_otp }}</div>
-        {% if is_smtp %}
-          <div class="text-[11px] text-slate-500">Also sent to your email. You may use this code immediately if your inbox has spam filters or delivery delays.</div>
-        {% endif %}
+      <div class="p-4 rounded-2xl bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50 border border-sky-200/90 text-center space-y-1.5 shadow-sm">
+        <div class="text-[11px] font-extrabold uppercase tracking-wider text-sky-800">Your Verification Code</div>
+        <div class="font-mono text-3xl font-black text-cyan-950 tracking-widest">{{ dev_otp }}</div>
+        <button type="button" onclick="document.querySelector('input[name=otp_code]').value='{{ dev_otp }}';" class="text-[11px] font-bold text-cyan-700 hover:text-cyan-900 underline transition-colors cursor-pointer">
+          ⚡ Click to auto-fill code
+        </button>
       </div>
     {% endif %}
 

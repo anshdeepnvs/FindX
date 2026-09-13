@@ -75,6 +75,10 @@ def send_otp_email(user, otp_code):
     </html>
     """
 
+    # If live external email is disabled, return immediately in 0ms (instant on-screen OTP)
+    if not getattr(settings, "ENABLE_LIVE_EMAIL", False):
+        return True, "On-screen verification code active."
+
     if not user or not getattr(user, "email", None) or not user.email.strip():
         logger.warning(f"send_otp_email called with invalid recipient: {user}")
         return False, "No recipient email address provided."

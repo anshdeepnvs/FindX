@@ -124,13 +124,17 @@ LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'core:home'
 
 # ─── Email Configuration ───────────────────────────────────────────────────────
+# Live external email is disabled by default to eliminate signup/login lag.
+# Instant on-screen verification codes are used instead.
+ENABLE_LIVE_EMAIL   = os.getenv("ENABLE_LIVE_EMAIL", "False").lower() in ("true", "1")
+
 EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.gmail.com").strip()
 EMAIL_PORT          = int(os.getenv("EMAIL_PORT", 587))
 EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1")
 EMAIL_USE_SSL       = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1")
 EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER", "").strip()
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").replace(" ", "").strip()
-EMAIL_TIMEOUT       = int(os.getenv("EMAIL_TIMEOUT", 10))  # 10s timeout prevents Gunicorn worker timeout
+EMAIL_TIMEOUT       = int(os.getenv("EMAIL_TIMEOUT", 5))
 
 if EMAIL_HOST_USER:
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"FindX Platform <{EMAIL_HOST_USER}>")
@@ -148,22 +152,24 @@ _placeholders = (
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 
 _smtp_active = (
-    bool(EMAIL_HOST_USER)
+    ENABLE_LIVE_EMAIL
+    and bool(EMAIL_HOST_USER)
     and bool(EMAIL_HOST_PASSWORD)
     and EMAIL_HOST_USER not in _placeholders
     and not any(p in EMAIL_HOST_PASSWORD for p in _placeholders)
 )
 
-IS_SMTP_CONFIGURED = bool(RESEND_API_KEY) or _smtp_active
+IS_SMTP_CONFIGURED = (ENABLE_LIVE_EMAIL and bool(RESEND_API_KEY)) or _smtp_active
 
 if "test" in sys.argv:
     EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-elif RESEND_API_KEY:
+elif ENABLE_LIVE_EMAIL and RESEND_API_KEY:
     EMAIL_BACKEND = "accounts.email_backends.ResendEmailBackend"
-elif IS_SMTP_CONFIGURED:
+elif ENABLE_LIVE_EMAIL and _smtp_active:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
+
 
 
 

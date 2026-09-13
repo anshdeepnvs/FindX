@@ -17,7 +17,7 @@ def send_ai_verified_claim_email(finder, claimant, found_item, match, claim, con
     Engineered with anti-spam compliance: clean subject, no spam trigger words/emojis,
     proper transactional headers, and domain link.
     """
-    if not finder.email:
+    if not getattr(settings, "ENABLE_LIVE_EMAIL", False) or not finder.email:
         return False
 
     base_url = getattr(settings, "SITE_URL", "http://localhost:8000")
